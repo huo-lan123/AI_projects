@@ -1,0 +1,1686 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<!-- 移动端viewport：禁止缩放，适配手机浏览器，竖屏优先 -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="format-detection" content="telephone=no">
+<title>熊了个熊</title>
+<style>
+/* ===== 全局重置 ===== */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+}
+
+/* 锁定页面，防止移动端地址栏伸缩导致布局抖动 */
+html, body {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+}
+
+/* 背景：粉色梦幻主题，柔和粉紫色调 */
+body {
+    background: linear-gradient(180deg, #fff0f5 0%, #ffd6e8 25%, #ffc0d9 50%, #e8b4d8 75%, #d4a5d8 100%);
+    color: #880e4f;
+}
+
+/* ===== 主容器 ===== */
+#app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    height: 100dvh; /* 动态视口高度，适配移动端地址栏 */
+    max-width: 480px;
+    margin: 0 auto;
+    position: relative;
+}
+
+/* 底部装饰（粉色花瓣风格） */
+#app::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 80px;
+    background:
+        radial-gradient(ellipse 20px 10px at 10% 100%, rgba(255,182,193,0.5) 0%, transparent 70%),
+        radial-gradient(ellipse 24px 12px at 25% 100%, rgba(255,192,203,0.4) 0%, transparent 70%),
+        radial-gradient(ellipse 18px 9px at 40% 100%, rgba(255,182,193,0.5) 0%, transparent 70%),
+        radial-gradient(ellipse 22px 11px at 55% 100%, rgba(255,192,203,0.4) 0%, transparent 70%),
+        radial-gradient(ellipse 20px 10px at 70% 100%, rgba(255,182,193,0.5) 0%, transparent 70%),
+        radial-gradient(ellipse 24px 12px at 85% 100%, rgba(255,192,203,0.4) 0%, transparent 70%),
+        radial-gradient(ellipse 28px 14px at 95% 100%, rgba(255,182,193,0.5) 0%, transparent 70%),
+        linear-gradient(180deg, transparent, rgba(255,182,193,0.15) 50%, rgba(255,105,180,0.1));
+    pointer-events: none;
+    z-index: 0;
+}
+
+/* ===== 顶部标题区（紧凑） ===== */
+#header {
+    flex-shrink: 0;
+    padding: 4px 12px 3px;
+    text-align: center;
+    background: rgba(255, 182, 193, 0.3);
+    border-bottom: 1px solid rgba(255, 105, 180, 0.2);
+    padding-top: calc(4px + env(safe-area-inset-top, 0px));
+    position: relative;
+    z-index: 2;
+}
+
+#header h1 {
+    font-size: 18px;
+    color: #e91e63;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-shadow: 0 1px 3px rgba(255,255,255,0.6);
+    line-height: 1.3;
+}
+
+#level-info {
+    font-size: 11px;
+    color: #f06292;
+    margin-top: 1px;
+}
+
+#progress-bar {
+    height: 4px;
+    background: rgba(255, 105, 180, 0.15);
+    border-radius: 2px;
+    margin: 3px 0 0;
+    overflow: hidden;
+}
+
+#progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #f06292, #e91e63);
+    border-radius: 3px;
+    transition: width 0.3s ease;
+    width: 100%;
+}
+
+/* ===== 游戏卡牌区域 ===== */
+#game-area {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    padding: 4px;
+    min-height: 0; /* 关键：允许flex子项缩小 */
+    z-index: 1;
+}
+
+/* ===== 卡牌样式（奶油粉方块 + 粉色厚边 + 3D立体） ===== */
+.card {
+    position: absolute;
+    width: var(--card-w, 44px);
+    height: var(--card-h, 50px);
+    background: linear-gradient(180deg, #fffafc 0%, #fce4ec 100%);
+    border: 2px solid #f48fb1;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--card-font, 24px);
+    line-height: 1;
+    box-shadow:
+        0 4px 0 #c2185b,                /* 底部厚边，营造立体砖块感 */
+        0 5px 10px rgba(194, 24, 91, 0.18);  /* 投影 */
+    cursor: pointer;
+    transition: transform 0.1s, filter 0.2s, opacity 0.2s;
+    user-select: none;
+    -webkit-user-select: none;
+    /* 增大触摸热区 */
+    padding: 2px;
+}
+
+/* 卡牌顶部高光，增加立体感 */
+.card::before {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: 4px;
+    right: 4px;
+    height: 35%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.9), rgba(255,255,255,0));
+    border-radius: 6px 6px 0 0;
+    pointer-events: none;
+}
+
+.card.clickable:active {
+    transform: translateY(2px) scale(0.92);
+    box-shadow:
+        0 2px 0 #c2185b,
+        0 2px 5px rgba(194, 24, 91, 0.18);
+}
+
+/* 被上层遮挡的卡牌：轻微变暗，保持可识别 */
+.card.blocked {
+    filter: brightness(0.82) saturate(0.6);
+    opacity: 0.7;
+    pointer-events: none;
+}
+
+/* 调试：顶层可点击卡牌绿色边框（校验遮挡判定正确性） */
+.card.debug-top {
+    outline: 2px solid #e91e63;
+    outline-offset: -2px;
+}
+
+/* 盲盒卡牌：粉紫条纹堆叠 */
+.card.blind {
+    background: repeating-linear-gradient(
+        0deg,
+        #f8bbd0 0px,
+        #f8bbd0 4px,
+        #e1bee7 4px,
+        #e1bee7 8px
+    );
+    border-color: #ce93d8;
+    color: rgba(255,255,255,0.8);
+    text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+    box-shadow:
+        0 3px 0 #ad1457,
+        0 4px 8px rgba(194, 24, 91, 0.12);
+}
+
+.card.blind::before {
+    background: linear-gradient(180deg, rgba(255,255,255,0.5), rgba(255,255,255,0));
+}
+
+/* 飞行动画 */
+.card.flying {
+    transition: left 0.28s cubic-bezier(0.4, 0, 0.6, 1),
+                top 0.28s cubic-bezier(0.4, 0, 0.6, 1),
+                width 0.28s ease,
+                height 0.28s ease;
+    z-index: 1000 !important;
+}
+
+/* ===== 底部卡槽区（栅栏样式，7槽适配屏宽） ===== */
+#slots-container {
+    flex-shrink: 0;
+    padding: 3px 6px;
+    position: relative;
+    z-index: 2;
+}
+
+.slots {
+    display: flex;
+    gap: 2px;
+    justify-content: center;
+    /* 粉色木质背景 */
+    background: linear-gradient(135deg, #e8a0bf, #c9789e);
+    border-radius: 10px;
+    padding: 4px;
+    border: 2px solid #a04068;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2), 0 2px 5px rgba(194,24,91,0.2);
+}
+
+.slot {
+    width: var(--slot-w, 38px);
+    height: var(--slot-h, 44px);
+    border: 2px dashed rgba(255,255,255,0.2);
+    border-radius: 6px;
+    background: rgba(255, 248, 238, 0.08);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: var(--slot-font, 18px);
+    flex-shrink: 0;
+    transition: transform 0.15s;
+}
+
+.slot.filled {
+    border-style: solid;
+    border-color: #f48fb1;
+    background: linear-gradient(180deg, #fffafc 0%, #fce4ec 100%);
+    box-shadow:
+        0 3px 0 #c2185b,
+        0 3px 6px rgba(194, 24, 91, 0.12);
+    animation: slotPop 0.2s ease;
+}
+
+@keyframes slotPop {
+    0% { transform: scale(0.6); }
+    60% { transform: scale(1.08); }
+    100% { transform: scale(1); }
+}
+
+/* 消除动画 */
+.slot.matching {
+    animation: matchOut 0.4s ease forwards !important;
+}
+
+@keyframes matchOut {
+    0% { transform: scale(1); opacity: 1; }
+    40% { transform: scale(1.35); opacity: 0.9; filter: brightness(1.3); }
+    100% { transform: scale(0); opacity: 0; }
+}
+
+/* ===== 道具按钮区（大尺寸，适合手指点击） ===== */
+#controls {
+    flex-shrink: 0;
+    display: flex;
+    gap: 6px;
+    padding: 4px 8px 6px;
+    padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+    justify-content: center;
+    position: relative;
+    z-index: 2;
+}
+
+.btn-powerup {
+    flex: 1;
+    max-width: 80px;
+    padding: 7px 2px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #f06292, #c2185b);
+    color: #fff;
+    font-size: 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    cursor: pointer;
+    transition: transform 0.1s, opacity 0.2s;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 2px 6px rgba(194, 24, 91, 0.3);
+    min-height: 44px; /* 苹果HIG最小触摸区域 */
+    position: relative; /* 次数徽章定位基准 */
+}
+
+/* 道具次数徽章：右上角圆形数字 */
+.btn-count {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 8px;
+    background: #fff;
+    color: #c2185b;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 16px;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    pointer-events: none;
+}
+
+.btn-powerup:active:not(:disabled) {
+    transform: scale(0.92);
+}
+
+.btn-powerup:disabled {
+    opacity: 0.35;
+    pointer-events: none;
+    filter: grayscale(0.5);
+}
+
+.btn-icon {
+    font-size: 20px;
+    line-height: 1;
+}
+
+.btn-label {
+    font-size: 10px;
+    line-height: 1;
+}
+
+/* ===== 弹窗 ===== */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2000;
+    animation: fadeIn 0.2s ease;
+    padding: 20px;
+}
+
+.modal-overlay.hidden {
+    display: none;
+}
+
+.modal {
+    background: linear-gradient(180deg, #fff0f5, #ffd6e8);
+    border-radius: 20px;
+    padding: 28px 24px;
+    max-width: 320px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 10px 40px rgba(194, 24, 91, 0.3);
+    animation: modalIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    border: 2px solid #f48fb1;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes modalIn {
+    from { transform: scale(0.6); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+.modal h2 {
+    font-size: 24px;
+    color: #c2185b;
+    margin-bottom: 10px;
+}
+
+.modal p {
+    font-size: 14px;
+    color: #e91e63;
+    margin-bottom: 18px;
+    line-height: 1.6;
+}
+
+.modal .btn-primary {
+    display: block;
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #f06292, #c2185b);
+    color: #fff;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: 8px;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 2px 6px rgba(194, 24, 91, 0.3);
+    transition: transform 0.1s;
+}
+
+.modal .btn-primary:active {
+    transform: scale(0.96);
+}
+
+.modal .btn-secondary {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #f48fb1;
+    border-radius: 12px;
+    background: transparent;
+    color: #e91e63;
+    font-size: 14px;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.1s;
+}
+
+.modal .btn-secondary:active {
+    transform: scale(0.96);
+}
+
+.hidden {
+    display: none !important;
+}
+</style>
+</head>
+<body>
+
+<!-- ===== 游戏主容器 ===== -->
+<div id="app">
+    <!-- 顶部标题区 -->
+    <header id="header">
+        <h1>🐻 熊了个熊</h1>
+        <div id="level-info">第 1 关</div>
+        <div id="progress-bar"><div id="progress-fill"></div></div>
+    </header>
+
+    <!-- 中间卡牌游戏区 -->
+    <div id="game-area"></div>
+
+    <!-- 底部卡槽区（栅栏样式） -->
+    <div id="slots-container">
+        <div class="slots" id="slots"></div>
+    </div>
+
+    <!-- 道具按钮区 -->
+    <div id="controls">
+        <button class="btn-powerup" id="btn-undo">
+            <span class="btn-count" id="count-undo">999</span>
+            <span class="btn-icon">↩️</span>
+            <span class="btn-label">撤回</span>
+        </button>
+        <button class="btn-powerup" id="btn-shuffle">
+            <span class="btn-count" id="count-shuffle">999</span>
+            <span class="btn-icon">🔄</span>
+            <span class="btn-label">洗牌</span>
+        </button>
+        <button class="btn-powerup" id="btn-remove">
+            <span class="btn-count" id="count-remove">999</span>
+            <span class="btn-icon">📤</span>
+            <span class="btn-label">移出</span>
+        </button>
+        <button class="btn-powerup" id="btn-sound">
+            <span class="btn-icon">🔊</span>
+            <span class="btn-label">音效</span>
+        </button>
+        <button class="btn-powerup" id="btn-bgm">
+            <span class="btn-icon">🎵</span>
+            <span class="btn-label">音乐</span>
+        </button>
+    </div>
+</div>
+
+<!-- ===== 弹窗 ===== -->
+<div id="modal-overlay" class="modal-overlay hidden">
+    <div id="modal" class="modal">
+        <div id="modal-content"></div>
+    </div>
+</div>
+
+<script>
+/* ===== 卡牌类型定义（16种emoji，禁止外部图片）===== */
+var CARD_TYPES = [
+    { id: 'bear',      emoji: '🐻', name: '小熊' },
+    { id: 'honey',     emoji: '🍯', name: '蜂蜜' },
+    { id: 'pinecone',  emoji: '🌰', name: '松果' },
+    { id: 'mushroom',  emoji: '🍄', name: '蘑菇' },
+    { id: 'berry',     emoji: '🫐', name: '浆果' },
+    { id: 'maple',     emoji: '🍁', name: '枫叶' },
+    { id: 'stump',     emoji: '🪵', name: '树桩' },
+    { id: 'hay',       emoji: '🌾', name: '干草' },
+    { id: 'bee',       emoji: '🐝', name: '蜜蜂' },
+    { id: 'nuts',      emoji: '🥜', name: '坚果' },
+    { id: 'jam',       emoji: '🫙', name: '果酱' },
+    { id: 'pine',      emoji: '🌲', name: '松针' },
+    { id: 'leaf',      emoji: '🍂', name: '落叶' },
+    { id: 'nest',      emoji: '🪺', name: '鸟窝' },
+    { id: 'strawberry',emoji: '🍓', name: '野草莓' },
+    { id: 'hedgehog',  emoji: '🦔', name: '小刺猬' }
+];
+
+/* ===== 关卡配置 ===== */
+/* Level 0：新手教程关 — 9种卡牌，54张，3层，无盲盒，轻松通关 */
+/* Level 1：挑战关 — 16种卡牌，240张，随机环形布局+盲盒+散牌 */
+var LEVELS = [
+    {
+        name: '第 1 关 · 新手教程',
+        typeCount: 9,    // 使用前9种卡牌
+        totalCards: 54   // 54张 = 18组×3，每种6张
+    },
+    {
+        name: '第 2 关 · 森林挑战',
+        typeCount: 16,   // 全部16种卡牌
+        totalCards: 222  // 222张 = 74组×3，C形开口环布局
+    }
+];
+
+/* ===== 游戏状态 ===== */
+var state = {
+    level: 0,
+    fieldCards: [],   // 场上所有卡牌（含盲盒卡牌）
+    slots: [],        // 底部卡槽中的卡牌
+    history: [],      // 操作历史（用于撤回）
+    powerups: { undo: 999, shuffle: 999, remove: 999 },
+    soundOn: true,
+    bgmOn: true,      // 背景音乐默认打开（进入游戏自动播放）
+    gameOver: false,
+    won: false,
+    animating: false,
+    totalCards: 0,
+    cardDims: null    // 缓存卡牌尺寸，避免每次渲染重算导致跳动
+};
+
+/* ===== 工具函数 ===== */
+/* Fisher-Yates 洗牌算法 */
+function shuffleArr(arr) {
+    for (var i = arr.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var tmp = arr[i]; arr[i] = arr[j]; arr[j] = tmp;
+    }
+    return arr;
+}
+
+/* 根据类型ID获取emoji */
+function getEmoji(typeId) {
+    for (var i = 0; i < CARD_TYPES.length; i++) {
+        if (CARD_TYPES[i].id === typeId) return CARD_TYPES[i].emoji;
+    }
+    return '';
+}
+
+/* ===== 类型分配函数 ===== */
+/* 确保每种卡牌数量为3的倍数，自动修剪多余卡牌，随机打乱后分配 */
+function assignTypes(cards, types) {
+    /* 修剪多余卡牌，保证总数是3的倍数 */
+    var sets = Math.floor(cards.length / 3);
+    while (cards.length > sets * 3) {
+        cards.pop();
+    }
+    var typePool = [];
+    for (var i = 0; i < sets; i++) {
+        var t = types[i % types.length];
+        typePool.push(t, t, t); /* 每组3张同类型 */
+    }
+    shuffleArr(typePool);
+    cards.forEach(function(card, i) { card.type = typePool[i]; });
+}
+
+/* ===== 第1关生成：简单教程布局 ===== */
+/* 3层金字塔结构，逐层缩小并偏移叠加；整体扁高比例、铺满画布中间空间（不再缩成细条） */
+function generateLevel1() {
+    var cards = [];
+    var id = 0;
+    // 底层加高加宽，整体网格从 7.3×2.9 变为 ≈6.7×6.2，纵向充分铺开
+    var layers = [
+        { cols: 6, rows: 6, ox: 0.0, oy: 0.0 },  // 36张 底层宽厚
+        { cols: 6, rows: 4, ox: 0.5, oy: 0.6 },  // 24张 中层
+        { cols: 5, rows: 3, ox: 1.0, oy: 1.2 }   // 15张 顶层
+    ]; // 合计 75 张（3的倍数）
+
+    layers.forEach(function(layer, layerIdx) {
+        for (var r = 0; r < layer.rows; r++) {
+            for (var c = 0; c < layer.cols; c++) {
+                /* 每张卡牌叠加随机微小偏移，打破整齐行列 */
+                var jx = (Math.random() - 0.5) * 0.30; /* ±0.15 ≈ ±8-15px */
+                var jy = (Math.random() - 0.5) * 0.30;
+                cards.push({
+                    id: id++,
+                    type: null,
+                    x: c + layer.ox + jx,
+                    y: r + layer.oy + jy,
+                    layer: layerIdx,
+                    blind: false,
+                    blindStack: -1,
+                    subOrder: Math.random() /* 同层内渲染顺序随机 */
+                });
+            }
+        }
+    });
+
+    // 使用前9种卡牌类型
+    var types = CARD_TYPES.slice(0, 9).map(function(t) { return t.id; });
+    assignTypes(cards, types);
+    return cards;
+}
+
+/* ===== 第2关生成：6层横向迂回厚带状环 + 横向折叠盲盒 + 侧边外露 + 散牌 ===== */
+/* 6层同尺寸8×5厚带状环，3格厚度，横向zigzag不收拢 */
+/* 盲盒改为横向折叠（各10张），第一张朝内部 */
+function generateLevel2() {
+    var cards = [];
+    var id = 0;
+
+    /* --- 辅助函数：生成厚带状C形开口环 --- */
+    function genThickBandRing(w, h, thickness, ox, oy, layer, gapRate, gapRatio) {
+        var result = [];
+        var gapSize = Math.max(1, Math.round(h * gapRatio));
+        var gapStart = Math.floor((h - gapSize) / 2);
+        var gapEnd = gapStart + gapSize;
+        var gapJitter = Math.floor((Math.random() - 0.5) * 2);
+
+        for (var r = 0; r < h; r++) {
+            for (var c = 0; c < w; c++) {
+                var isBand = (r < thickness || r >= h - thickness ||
+                              c < thickness || c >= w - thickness);
+                if (!isBand) continue;
+
+                if (c >= w - thickness && r >= gapStart + gapJitter && r < gapEnd + gapJitter) continue;
+
+                if (gapRate > 0 && Math.random() < gapRate) continue;
+
+                var jx = (Math.random() - 0.5) * (0.20 + Math.random() * 0.16);
+                var jy = (Math.random() - 0.5) * (0.20 + Math.random() * 0.16);
+
+                result.push({
+                    id: id++, type: null,
+                    x: c + ox + jx, y: r + oy + jy,
+                    layer: layer, blind: false, blindStack: -1,
+                    subOrder: Math.random(),
+                    region: 'center'
+                });
+            }
+        }
+        return result;
+    }
+
+    /* --- 主堆叠：6层同尺寸8×5厚带状环，横向zigzag --- */
+    /* L0-L2用3格厚度（底层宽厚），L3用2格，L4-L5稀疏 */
+    /* 总卡牌靠横向加宽（8×5 + 3格厚）补偿层数减少 */
+    var gapRatio = 0.20 + Math.random() * 0.10;
+    var ringW = 8, ringH = 5;
+    var mainLayers = [
+        { w: ringW, h: ringH, t: 3, ox: 0.00, oy: 0.00 },   // L0: 3格厚底层
+        { w: ringW, h: ringH, t: 3, ox: 0.45, oy: 0.28 },   // L1: 3格厚，右移zigzag
+        { w: ringW, h: ringH, t: 3, ox: 0.15, oy: 0.56 },   // L2: 3格厚，左移zigzag
+        { w: ringW, h: ringH, t: 2, ox: 0.55, oy: 0.84 },   // L3: 2格厚，右移zigzag
+        { w: ringW, h: ringH, t: 2, ox: 0.20, oy: 1.12 },   // L4: 2格厚，左移zigzag（稀疏）
+        { w: ringW, h: ringH, t: 2, ox: 0.50, oy: 1.40 }    // L5: 2格厚，右移zigzag（稀疏）
+    ];
+
+    var mirror = Math.random() < 0.5;
+    var mainBaseW = ringW;
+
+    mainLayers.forEach(function(l, i) {
+        var gapRate = 0;
+        if (i >= 4) gapRate = 0.15 + Math.random() * 0.10;
+        var layerCards = genThickBandRing(l.w, l.h, l.t, l.ox, l.oy, i, gapRate, gapRatio);
+        layerCards.forEach(function(c) {
+            if (mirror) c.x = mainBaseW - 1 - c.x;
+            cards.push(c);
+        });
+    });
+
+    /* --- 缺口边缘暴露卡牌 --- */
+    var topLayer = mainLayers.length - 1;
+    var gapEdgePositions = [
+        { x: 7.5, y: 1.5, layer: topLayer },
+        { x: 7.5, y: 4.5, layer: topLayer },
+        { x: 6.8, y: 1.2, layer: topLayer - 1 },
+        { x: 6.8, y: 4.8, layer: topLayer - 1 }
+    ];
+    gapEdgePositions.forEach(function(p) {
+        var x = p.x + (Math.random() - 0.5) * 0.20;
+        var y = p.y + (Math.random() - 0.5) * 0.20;
+        if (mirror) x = mainBaseW - 1 - x;
+        cards.push({
+            id: id++, type: null,
+            x: x, y: y, layer: p.layer,
+            blind: false, blindStack: -1,
+            subOrder: Math.random(),
+            region: 'center'
+        });
+    });
+
+    /* --- 侧边辅助区：左右各竖排3张永久外露卡牌 --- */
+    var sideY = [0.5, 2.0, 3.8];
+    sideY.forEach(function(y) {
+        var lx = -1.0 + (Math.random() - 0.5) * 0.25;
+        var ly = y + (Math.random() - 0.5) * 0.25;
+        if (mirror) lx = mainBaseW - 1 - lx;
+        cards.push({ id: id++, type: null, x: lx, y: ly, layer: 0, blind: false, blindStack: -1, subOrder: Math.random(), region: 'side' });
+
+        var rx = 8.5 + (Math.random() - 0.5) * 0.25;
+        var ry = y + (Math.random() - 0.5) * 0.25;
+        if (mirror) rx = mainBaseW - 1 - rx;
+        cards.push({ id: id++, type: null, x: rx, y: ry, layer: 0, blind: false, blindStack: -1, subOrder: Math.random(), region: 'side' });
+    }); // 侧边合计 6 张
+
+    /* --- 挖掘通路：2-3条向外敞开的独立路径 --- */
+    var numPaths = 2 + Math.floor(Math.random() * 2);
+    var pathStarts = [
+        { x: -0.5, y: 0.3, dx: -1, dy: 0 },
+        { x: 8.5, y: 2.5, dx: 1, dy: 0 },
+        { x: 4.0, y: 5.5, dx: 0, dy: 1 }
+    ];
+    shuffleArr(pathStarts);
+    for (var pi = 0; pi < numPaths; pi++) {
+        var ps = pathStarts[pi];
+        var pathLen = 2 + Math.floor(Math.random() * 2);
+        for (var pj = 0; pj < pathLen; pj++) {
+            var px = ps.x + ps.dx * pj + (Math.random() - 0.5) * 0.20;
+            var py = ps.y + ps.dy * pj + (Math.random() - 0.5) * 0.20;
+            if (mirror) px = mainBaseW - 1 - px;
+            cards.push({
+                id: id++, type: null,
+                x: px, y: py, layer: 0,
+                blind: false, blindStack: -1,
+                subOrder: Math.random(),
+                region: 'path'
+            });
+        }
+    }
+
+    /* --- 盲盒区：横向折叠，2堆对称，各10张 --- */
+    /* 左堆：x从左到右递增，layer递增，最右（朝内）为顶层可点击 */
+    /* 右堆：x从右到左递减，layer递增，最左（朝内）为顶层可点击 */
+    var blindY = 7.8; /* 下移避免遮住中间卡牌 */
+    var blindStep = 0.15; /* 横向折叠间距缩小 */
+    var blindCount = 10;
+    /* 左堆盲盒 */
+    for (var bi = 0; bi < blindCount; bi++) {
+        var bx = 0.2 + bi * blindStep;
+        if (mirror) bx = mainBaseW - 1 - bx;
+        cards.push({
+            id: id++, type: null,
+            x: bx, y: blindY,
+            layer: bi, blind: true, blindStack: 0,
+            subOrder: 0,
+            region: 'blind',
+            blindDir: 'right' /* 左堆向右折叠 */
+        });
+    }
+    /* 右堆盲盒 */
+    for (var bi = 0; bi < blindCount; bi++) {
+        var bx2 = mainBaseW - 0.2 - bi * blindStep;
+        if (mirror) bx2 = mainBaseW - 1 - bx2;
+        cards.push({
+            id: id++, type: null,
+            x: bx2, y: blindY,
+            layer: bi, blind: true, blindStack: 1,
+            subOrder: 0,
+            region: 'blind',
+            blindDir: 'left' /* 右堆向左折叠 */
+        });
+    } // 盲盒合计 20 张
+
+    /* --- 外围散牌区 --- */
+    var scatterPositions = [
+        { x: 1.0, y: -0.5, layer: 0 },
+        { x: 6.0, y: -0.5, layer: 0 },
+        { x: 0.5, y: 5.8, layer: 0 },
+        { x: 7.0, y: 5.8, layer: 0 },
+        { x: 3.5, y: -0.3, layer: 1 },
+        { x: -0.5, y: 3.0, layer: 1 }
+    ];
+    scatterPositions.forEach(function(s) {
+        var x = s.x + (Math.random() - 0.5) * 0.30;
+        var y = s.y + (Math.random() - 0.5) * 0.30;
+        if (mirror) x = mainBaseW - 1 - x;
+        cards.push({
+            id: id++, type: null,
+            x: x, y: y,
+            layer: s.layer, blind: false, blindStack: -1,
+            subOrder: Math.random(),
+            region: 'scatter'
+        });
+    });
+
+    /* --- 位置归一化 --- */
+    var minX = Infinity, minY = Infinity;
+    cards.forEach(function(c) {
+        if (c.x < minX) minX = c.x;
+        if (c.y < minY) minY = c.y;
+    });
+    cards.forEach(function(c) {
+        c.x = Math.round((c.x - minX) * 100) / 100;
+        c.y = Math.round((c.y - minY) * 100) / 100;
+    });
+
+    /* --- 分配卡牌类型 --- */
+    var allTypes = CARD_TYPES.map(function(t) { return t.id; });
+    assignTypes(cards, allTypes);
+
+    return cards;
+}
+
+/* ===== 关卡生成入口 ===== */
+function generateLevel(levelIdx) {
+    if (levelIdx === 0) return generateLevel1();
+    /* 第2关：生成后校验开局可点击卡牌数量 + 网格感检测 */
+    /* 第2关校验规则：
+       1. 不含盲盒的卡牌总数 ≥ 210（横向加宽环带铺满卡牌）
+       2. 最大堆叠层数 ≤ 6（降低纵深难度）
+       3. 中心堆可点击 ≥ 5
+       4. 全局可点击 ≥ 10
+       5. 网格感检测
+       不满足 → 丢弃重生成（最多20次） */
+    var cards;
+    var attempts = 0;
+    var bestCards = null;
+    var bestCenterClickable = 0;
+    do {
+        cards = generateLevel2();
+
+        /* 校验1：不含盲盒的卡牌总数 ≥ 210 */
+        var nonBlindCount = 0;
+        cards.forEach(function(c) { if (!c.blind) nonBlindCount++; });
+        if (nonBlindCount < 210) { attempts++; continue; }
+
+        /* 校验2：中心堆最大堆叠层数 ≤ 6（不含盲盒） */
+        var maxLayer = 0;
+        cards.forEach(function(c) { if (!c.blind && c.layer > maxLayer) maxLayer = c.layer; });
+        if (maxLayer > 6) { attempts++; continue; }
+
+        /* 校验2：中心堆可点击 >= 5 + 全局可点击 >= 10 */
+        var centerClickable = 0;
+        var totalClickable = 0;
+        cards.forEach(function(card) {
+            if (!isBlocked(card, cards)) {
+                totalClickable++;
+                if (card.region === 'center' || card.region === 'path') {
+                    centerClickable++;
+                }
+            }
+        });
+
+        /* 记录最佳结果（兜底用） */
+        if (centerClickable > bestCenterClickable) {
+            bestCenterClickable = centerClickable;
+            bestCards = cards;
+        }
+
+        /* 中心堆可点击不足5张 → 作废重生成 */
+        if (centerClickable < 5) { attempts++; continue; }
+        /* 全局可点击不足10张 → 作废重生成 */
+        if (totalClickable < 10) { attempts++; continue; }
+
+        /* 校验3：网格感检测 — 同层卡牌x/y坐标差异度 */
+        var tooGrid = false;
+        var layerMap = {};
+        cards.forEach(function(c) {
+            if (c.blind) return;
+            var key = 'L' + c.layer;
+            if (!layerMap[key]) layerMap[key] = [];
+            layerMap[key].push(c);
+        });
+        for (var key in layerMap) {
+            var layerCards = layerMap[key];
+            if (layerCards.length < 4) continue;
+            var xRounded = {};
+            layerCards.forEach(function(c) {
+                var rx = Math.round(c.x * 10) / 10;
+                xRounded[rx] = (xRounded[rx] || 0) + 1;
+            });
+            var maxSame = 0;
+            for (var rx in xRounded) {
+                if (xRounded[rx] > maxSame) maxSame = xRounded[rx];
+            }
+            if (maxSame / layerCards.length > 0.5) {
+                tooGrid = true;
+                break;
+            }
+        }
+        if (tooGrid) { attempts++; continue; }
+
+        break; /* 所有校验通过 */
+    } while (attempts < 20);
+
+    /* 兜底：20次都没通过，用最佳结果 */
+    if (centerClickable < 5 && bestCards) {
+        cards = bestCards;
+    }
+    return cards;
+}
+
+/* ===== 遮挡检测：4角覆盖判定（基于zIndex单向比较）===== */
+/* 判断卡牌四个顶角是否被zIndex更高的卡牌矩形区域覆盖 */
+/* zIndex = layer×100 + subOrder×99，同层卡牌也能互相遮挡 */
+/* cardList 参数可选，用于开局校验时传入临时卡牌列表 */
+function getCardZIndex(card) {
+    return card.layer * 100 + Math.floor((card.subOrder || 0.5) * 99);
+}
+
+function isBlocked(card, cardList) {
+    cardList = cardList || state.fieldCards;
+    var cardZ = getCardZIndex(card);
+    var eps = 0.02; /* 小偏移避免浮点边界问题 */
+    var corners = [
+        { x: card.x + eps,         y: card.y + eps         }, /* 左上 */
+        { x: card.x + 1 - eps,     y: card.y + eps         }, /* 右上 */
+        { x: card.x + eps,         y: card.y + 1 - eps     }, /* 左下 */
+        { x: card.x + 1 - eps,     y: card.y + 1 - eps     }  /* 右下 */
+    ];
+
+    for (var i = 0; i < cardList.length; i++) {
+        var other = cardList[i];
+        if (other.id === card.id) continue;
+        var otherZ = getCardZIndex(other);
+        if (otherZ <= cardZ) continue; /* 只检测zIndex更高的卡牌（单向覆盖） */
+
+        /* 检查4个角是否落在 other 卡牌矩形范围内 */
+        for (var j = 0; j < corners.length; j++) {
+            if (corners[j].x > other.x && corners[j].x < other.x + 1 &&
+                corners[j].y > other.y && corners[j].y < other.y + 1) {
+                return true; /* 任一角被覆盖即判定遮挡 */
+            }
+        }
+    }
+    return false;
+}
+/* ===== 尺寸计算 ===== */
+/* 动态尺寸：根据场上实际卡牌位置范围计算，卡牌删除后自动缩放 */
+function updateCardSize() {
+    var gameArea = document.getElementById('game-area');
+
+    var padding = 8;
+    var availW = gameArea.clientWidth - padding;
+    var availH = gameArea.clientHeight - padding;
+
+    /* 容错：容器尺寸为0或无卡牌时使用默认值 */
+    if (availW <= 0 || availH <= 0 || state.fieldCards.length === 0) {
+        document.documentElement.style.setProperty('--card-w', '40px');
+        document.documentElement.style.setProperty('--card-h', '46px');
+        document.documentElement.style.setProperty('--card-font', '23px');
+        var sw = 375;
+        var dSlotW = Math.max(28, Math.min(Math.floor((sw - 24) / 7), 48));
+        document.documentElement.style.setProperty('--slot-w', dSlotW + 'px');
+        document.documentElement.style.setProperty('--slot-h', Math.floor(dSlotW * 1.15) + 'px');
+        document.documentElement.style.setProperty('--slot-font', Math.floor(dSlotW * 0.58) + 'px');
+        state.cardDims = { cardW: 40, cardH: 46, offsetX: 0, offsetY: 0 };
+        return state.cardDims;
+    }
+
+    /* 动态计算卡牌范围：根据场上实际卡牌的x/y坐标 */
+    var minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    state.fieldCards.forEach(function(c) {
+        if (c.x < minX) minX = c.x;
+        if (c.x + 1 > maxX) maxX = c.x + 1;
+        if (c.y < minY) minY = c.y;
+        if (c.y + 1 > maxY) maxY = c.y + 1;
+    });
+
+    var gridW = maxX - minX;
+    var gridH = maxY - minY;
+    if (gridW <= 0) gridW = 7;
+    if (gridH <= 0) gridH = 3;
+
+    var screenW = window.innerWidth || document.documentElement.clientWidth || 375;
+    screenW = Math.min(screenW, 480);
+    /* 第1关（教程）放宽卡牌尺寸，让集群更大更舒展；第2关保持原设定 */
+    var baseCardW;
+    if (state.level === 0) {
+        baseCardW = Math.max(34, Math.min(52, screenW * 0.125));
+    } else {
+        baseCardW = Math.max(30, Math.min(46, screenW * 0.105));
+    }
+    var cardW = Math.min(availW / gridW, availH / gridH, baseCardW);
+    var cardH = cardW * 1.15;
+
+    document.documentElement.style.setProperty('--card-w', cardW + 'px');
+    document.documentElement.style.setProperty('--card-h', cardH + 'px');
+    document.documentElement.style.setProperty('--card-font', (cardW * 0.58) + 'px');
+
+    /* ===== 卡槽尺寸独立计算 ===== */
+    var slotGap = 2, slotPad = 4, containerPad = 6;
+    var availSlotW = screenW - containerPad * 2 - slotPad * 2 - slotGap * 6;
+    var slotW = Math.max(28, Math.min(Math.floor(availSlotW / 7), 48));
+    var slotH = Math.floor(slotW * 1.15);
+    document.documentElement.style.setProperty('--slot-w', slotW + 'px');
+    document.documentElement.style.setProperty('--slot-h', slotH + 'px');
+    document.documentElement.style.setProperty('--slot-font', Math.floor(slotW * 0.58) + 'px');
+
+    /* 居中偏移：基于实际卡牌范围，卡牌删除后范围缩小 → 卡牌自动放大居中 */
+    var offsetX = (gameArea.clientWidth - gridW * cardW) / 2 - minX * cardW;
+    var offsetY = (gameArea.clientHeight - gridH * cardH) / 2 - minY * cardH;
+
+    state.cardDims = { cardW: cardW, cardH: cardH, offsetX: offsetX, offsetY: offsetY };
+    return state.cardDims;
+}
+
+/* ===== 渲染：场上卡牌区域 ===== */
+/* 使用缓存尺寸渲染，含盲盒卡牌的视觉堆叠偏移 */
+/* 点击事件使用事件委托（initEvents中绑定），避免每次渲染重绑 */
+function renderField() {
+    var gameArea = document.getElementById('game-area');
+    var dim = state.cardDims || updateCardSize();
+    var cardW = dim.cardW, cardH = dim.cardH;
+    var offsetX = dim.offsetX, offsetY = dim.offsetY;
+
+    gameArea.innerHTML = '';
+
+    /* 使用DocumentFragment批量插入，减少重排 */
+    var frag = document.createDocumentFragment();
+
+    state.fieldCards.forEach(function(card) {
+        var el = document.createElement('div');
+        el.className = 'card';
+        el.dataset.id = card.id;
+
+        /* 计算渲染位置 */
+        var px = offsetX + card.x * cardW;
+        var py = offsetY + card.y * cardH;
+
+        /* 盲盒卡牌：横向折叠，位置已在卡牌数据中设定 */
+        if (card.blind) {
+            el.classList.add('blind');
+            el.textContent = '?';
+        } else {
+            el.textContent = getEmoji(card.type);
+        }
+
+        el.style.left = px + 'px';
+        el.style.top = py + 'px';
+        el.style.width = cardW + 'px';
+        el.style.height = cardH + 'px';
+        el.style.fontSize = (cardW * 0.58) + 'px';
+        el.style.zIndex = (card.layer * 100 + Math.floor((card.subOrder || 0.5) * 99)).toString();
+
+        /* 盲盒卡牌：扁平阴影，无层叠感；普通卡牌：层级越深阴影越重 */
+        if (card.blind) {
+            el.style.boxShadow = '0 2px 4px rgba(194,24,91,0.12)';
+        } else {
+            var sd = card.layer * 2 + 2;
+            el.style.boxShadow = '0 ' + sd + 'px ' + (sd + 2) + 'px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.5)';
+        }
+
+        /* 遮挡检测 */
+        if (isBlocked(card)) {
+            el.classList.add('blocked');
+        } else {
+            el.classList.add('clickable');
+            el.classList.add('debug-top');
+        }
+
+        frag.appendChild(el);
+    });
+    gameArea.appendChild(frag);
+}
+
+/* ===== 轻量更新卡牌状态（不重建DOM，仅更新class）===== */
+/* 点击卡牌后调用，避免完整renderField的200+DOM重建 */
+function updateCardStates() {
+    var gameArea = document.getElementById('game-area');
+    var cardEls = gameArea.querySelectorAll('.card');
+    for (var i = 0; i < cardEls.length; i++) {
+        var el = cardEls[i];
+        var cardId = parseInt(el.dataset.id);
+        var card = null;
+        for (var j = 0; j < state.fieldCards.length; j++) {
+            if (state.fieldCards[j].id === cardId) { card = state.fieldCards[j]; break; }
+        }
+        if (!card) { el.remove(); continue; }
+
+        /* 更新emoji（盲盒揭示后） */
+        if (!card.blind && el.classList.contains('blind')) {
+            el.classList.remove('blind');
+            el.textContent = getEmoji(card.type);
+        }
+
+        var blocked = isBlocked(card);
+        if (blocked) {
+            el.classList.add('blocked');
+            el.classList.remove('clickable', 'debug-top');
+        } else {
+            el.classList.remove('blocked');
+            el.classList.add('clickable', 'debug-top');
+        }
+    }
+}
+
+/* ===== 渲染：底部卡槽区域 ===== */
+function renderSlots() {
+    var slotsEl = document.getElementById('slots');
+    slotsEl.innerHTML = '';
+    for (var i = 0; i < 7; i++) {
+        var el = document.createElement('div');
+        el.className = 'slot';
+        if (i < state.slots.length) {
+            var card = state.slots[i];
+            el.classList.add('filled');
+            el.textContent = getEmoji(card.type); /* 卡槽中始终显示emoji */
+            el.dataset.cardId = card.id;
+        }
+        slotsEl.appendChild(el);
+    }
+}
+
+/* ===== 点击卡牌处理 ===== */
+function onCardClick(cardId) {
+    if (state.animating || state.gameOver) return;
+
+    var card = null;
+    for (var i = 0; i < state.fieldCards.length; i++) {
+        if (state.fieldCards[i].id === cardId) { card = state.fieldCards[i]; break; }
+    }
+    if (!card || isBlocked(card)) return;
+    if (state.slots.length >= 7) return;
+
+    state.animating = true;
+    saveHistory();
+
+    var cardEl = document.querySelector('#game-area .card[data-id="' + cardId + '"]');
+    if (!cardEl) { state.animating = false; return; }
+
+    /* 盲盒卡牌点击时揭示，显示真实图案 */
+    if (card.blind) {
+        cardEl.classList.remove('blind');
+        cardEl.textContent = getEmoji(card.type);
+    }
+
+    var rect = cardEl.getBoundingClientRect();
+
+    /* 计算目标卡槽位置 */
+    var slotEls = document.querySelectorAll('#slots .slot');
+    var targetSlot = slotEls[state.slots.length];
+    var targetRect = targetSlot ? targetSlot.getBoundingClientRect() : null;
+    if (!targetRect) { state.animating = false; return; }
+
+    /* 卡牌移至body，fixed定位做飞行动画 */
+    cardEl.style.position = 'fixed';
+    cardEl.style.left = rect.left + 'px';
+    cardEl.style.top = rect.top + 'px';
+    cardEl.style.width = rect.width + 'px';
+    cardEl.style.height = rect.height + 'px';
+    cardEl.style.zIndex = '1000';
+    cardEl.style.margin = '0';
+    document.body.appendChild(cardEl);
+
+    /* 触发飞行动画 */
+    requestAnimationFrame(function() {
+        cardEl.classList.add('flying');
+        cardEl.style.left = targetRect.left + 'px';
+        cardEl.style.top = targetRect.top + 'px';
+        cardEl.style.width = targetRect.width + 'px';
+        cardEl.style.height = targetRect.height + 'px';
+    });
+
+    playSound('click');
+
+    /* 动画结束后更新状态 */
+    setTimeout(function() {
+        cardEl.remove();
+        /* 从场上移除 */
+        state.fieldCards = state.fieldCards.filter(function(c) { return c.id !== cardId; });
+        /* 添加到卡槽（同类型聚集） */
+        addToSlot(card);
+        renderSlots();
+        /* 动态缩放：卡牌删除后重新计算尺寸并渲染 */
+        state.cardDims = null;
+        updateCardSize();
+        renderField();
+        updateProgress();
+
+        /* 检查消除 */
+        var matched = checkMatch();
+        if (!matched) {
+            state.animating = false;
+            checkLose();
+            checkWin();
+        }
+    }, 290);
+}
+
+/* ===== 添加卡牌到卡槽（同类型自动聚集）===== */
+function addToSlot(card) {
+    var insertIdx = state.slots.length;
+    /* 从后往前找同类型卡牌，插入到其后 */
+    for (var i = state.slots.length - 1; i >= 0; i--) {
+        if (state.slots[i].type === card.type) {
+            insertIdx = i + 1;
+            break;
+        }
+    }
+    state.slots.splice(insertIdx, 0, card);
+}
+
+/* ===== 消除检测：集齐3张相同自动消除 ===== */
+function checkMatch() {
+    var counts = {};
+    state.slots.forEach(function(card, idx) {
+        if (!counts[card.type]) counts[card.type] = [];
+        counts[card.type].push(idx);
+    });
+
+    for (var type in counts) {
+        if (counts[type].length >= 3) {
+            var indices = counts[type].slice(0, 3);
+            indices.forEach(function(idx) { state.slots[idx].matching = true; });
+
+            /* 添加消除动画 */
+            var slotsEl = document.getElementById('slots');
+            indices.forEach(function(idx) {
+                var slotEl = slotsEl.children[idx];
+                if (slotEl) slotEl.classList.add('matching');
+            });
+
+            playSound('match');
+            state.animating = true;
+
+            /* 延迟移除匹配的卡牌 */
+            setTimeout(function() {
+                state.slots = state.slots.filter(function(s) { return !s.matching; });
+                renderSlots();
+                state.animating = false;
+                updateProgress();
+                checkLose();
+                checkWin();
+            }, 420);
+
+            return true;
+        }
+    }
+    return false;
+}
+
+/* ===== 胜利检测：场上所有卡牌全部消除 ===== */
+function checkWin() {
+    if (state.fieldCards.length === 0 && state.slots.length === 0) {
+        state.gameOver = true;
+        state.won = true;
+        playSound('win');
+        setTimeout(function() { showResultModal(true); }, 300);
+        return true;
+    }
+    return false;
+}
+
+/* ===== 失败检测：卡槽7张占满 ===== */
+function checkLose() {
+    if (state.slots.length >= 7) {
+        state.gameOver = true;
+        state.won = false;
+        playSound('lose');
+        setTimeout(function() { showResultModal(false); }, 400);
+        return true;
+    }
+    return false;
+}
+
+/* ===== 进度条更新 ===== */
+function updateProgress() {
+    var remaining = state.fieldCards.length + state.slots.length;
+    var percent = state.totalCards > 0 ? (remaining / state.totalCards) * 100 : 100;
+    var fill = document.getElementById('progress-fill');
+    if (fill) fill.style.width = percent + '%';
+}
+
+/* ===== 历史记录（撤回功能）===== */
+/* 深拷贝当前场上卡牌和卡槽状态（含subOrder，保证撤回后遮挡判定正确） */
+function saveHistory() {
+    state.history.push({
+        fieldCards: state.fieldCards.map(function(c) {
+            return { id: c.id, type: c.type, x: c.x, y: c.y, layer: c.layer, blind: c.blind, blindStack: c.blindStack, subOrder: c.subOrder, region: c.region, blindDir: c.blindDir };
+        }),
+        slots: state.slots.map(function(c) {
+            return { id: c.id, type: c.type, x: c.x, y: c.y, layer: c.layer, blind: c.blind, blindStack: c.blindStack, subOrder: c.subOrder, region: c.region, blindDir: c.blindDir };
+        })
+    });
+    if (state.history.length > 20) state.history.shift();
+}
+/* ===== 道具：撤回上一步 ===== */
+function undo() {
+    if (state.animating || state.gameOver) return;
+    if (state.powerups.undo <= 0 || state.history.length === 0) return;
+
+    var prev = state.history.pop();
+    state.fieldCards = prev.fieldCards;
+    state.slots = prev.slots;
+    state.powerups.undo--;
+    updatePowerupButtons();
+    renderField();
+    renderSlots();
+    updateProgress();
+    playSound('click');
+}
+
+/* ===== 道具：全场洗牌 ===== */
+/* 打乱场上剩余所有卡牌的类型（位置不变） */
+function shuffleField() {
+    if (state.animating || state.gameOver) return;
+    if (state.powerups.shuffle <= 0 || state.fieldCards.length === 0) return;
+
+    saveHistory();
+    var types = state.fieldCards.map(function(c) { return c.type; });
+    shuffleArr(types);
+    state.fieldCards.forEach(function(c, i) { c.type = types[i]; });
+
+    state.powerups.shuffle--;
+    updatePowerupButtons();
+    renderField();
+    playSound('click');
+}
+
+/* ===== 道具：卡槽移出回场上 ===== */
+/* 随机选一张卡槽卡牌放回场上（盲盒卡牌揭示后不再隐藏） */
+function removeFromSlot() {
+    if (state.animating || state.gameOver) return;
+    if (state.powerups.remove <= 0 || state.slots.length === 0) return;
+
+    saveHistory();
+    /* 随机选一张卡槽中的卡牌 */
+    var randomIdx = Math.floor(Math.random() * state.slots.length);
+    var card = state.slots.splice(randomIdx, 1)[0];
+    /* 盲盒卡牌已揭示，放回场上时显示正面 */
+    card.blind = false;
+    card.blindStack = -1;
+    state.fieldCards.push(card);
+
+    state.powerups.remove--;
+    updatePowerupButtons();
+    renderField();
+    renderSlots();
+    updateProgress();
+    playSound('click');
+}
+
+/* ===== 更新道具按钮状态（次数徽章 + 禁用）===== */
+function updatePowerupButtons() {
+    var btnUndo = document.getElementById('btn-undo');
+    var btnShuffle = document.getElementById('btn-shuffle');
+    var btnRemove = document.getElementById('btn-remove');
+
+    btnUndo.disabled = state.powerups.undo <= 0;
+    btnShuffle.disabled = state.powerups.shuffle <= 0;
+    btnRemove.disabled = state.powerups.remove <= 0;
+
+    /* 更新次数徽章 */
+    var countUndo = document.getElementById('count-undo');
+    var countShuffle = document.getElementById('count-shuffle');
+    var countRemove = document.getElementById('count-remove');
+    if (countUndo) countUndo.textContent = state.powerups.undo;
+    if (countShuffle) countShuffle.textContent = state.powerups.shuffle;
+    if (countRemove) countRemove.textContent = state.powerups.remove;
+}
+
+/* ===== 音效系统（Web Audio API，无需外部文件）===== */
+var audioCtx = null;
+function getAudioCtx() {
+    if (!audioCtx) {
+        try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+        catch (e) { return null; }
+    }
+    return audioCtx;
+}
+
+function playSound(type) {
+    if (!state.soundOn) return;
+    var ctx = getAudioCtx();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume();
+    var now = ctx.currentTime;
+
+    /* 主增益节点，统一控制音量 */
+    var masterGain = ctx.createGain();
+    masterGain.gain.value = 0.5;
+    masterGain.connect(ctx.destination);
+
+    if (type === 'click') {
+        /* 点击音效：短促高频，音量增大适合手机 */
+        var osc = ctx.createOscillator();
+        var gain = ctx.createGain();
+        osc.connect(gain); gain.connect(masterGain);
+        osc.frequency.value = 800; osc.type = 'sine';
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+        osc.start(now); osc.stop(now + 0.1);
+
+        /* 叠加一个高频泛音，让声音更清脆 */
+        var osc2 = ctx.createOscillator();
+        var gain2 = ctx.createGain();
+        osc2.connect(gain2); gain2.connect(masterGain);
+        osc2.frequency.value = 1200; osc2.type = 'triangle';
+        gain2.gain.setValueAtTime(0.15, now);
+        gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.06);
+        osc2.start(now); osc2.stop(now + 0.06);
+
+    } else if (type === 'match') {
+        /* 消除音效：三连音上升 */
+        [523, 659, 784].forEach(function(freq, i) {
+            var o = ctx.createOscillator(); var g = ctx.createGain();
+            o.connect(g); g.connect(masterGain);
+            o.frequency.value = freq; o.type = 'sine';
+            g.gain.setValueAtTime(0.3, now + i * 0.06);
+            g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.06 + 0.15);
+            o.start(now + i * 0.06); o.stop(now + i * 0.06 + 0.15);
+        });
+
+    } else if (type === 'win') {
+        /* 通关音效：四音上升 */
+        [523, 659, 784, 1047].forEach(function(freq, i) {
+            var o = ctx.createOscillator(); var g = ctx.createGain();
+            o.connect(g); g.connect(masterGain);
+            o.frequency.value = freq; o.type = 'sine';
+            g.gain.setValueAtTime(0.35, now + i * 0.15);
+            g.gain.exponentialRampToValueAtTime(0.001, now + i * 0.15 + 0.4);
+            o.start(now + i * 0.15); o.stop(now + i * 0.15 + 0.4);
+        });
+
+    } else if (type === 'lose') {
+        /* 失败音效：下降 */
+        var o2 = ctx.createOscillator(); var g2 = ctx.createGain();
+        o2.connect(g2); g2.connect(masterGain);
+        o2.frequency.setValueAtTime(400, now);
+        o2.frequency.exponentialRampToValueAtTime(150, now + 0.6);
+        o2.type = 'sawtooth';
+        g2.gain.setValueAtTime(0.25, now);
+        g2.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+        o2.start(now); o2.stop(now + 0.6);
+    }
+}
+
+/* ===== 背景音乐系统（Web Audio API，轻松愉快风格）===== */
+/* 参考羊了个羊：C大调五声音阶循环旋律 + 低音伴奏 */
+var bgmTimer = null;
+var bgmGainNode = null;
+var bgmNoteIdx = 0;
+
+/* 旋律：C大调五声音阶，8小节循环 */
+var BGM_MELODY = [
+    { f: 523, d: 0.3 }, { f: 587, d: 0.3 }, { f: 659, d: 0.3 }, { f: 784, d: 0.3 },
+    { f: 880, d: 0.3 }, { f: 784, d: 0.3 }, { f: 659, d: 0.3 }, { f: 587, d: 0.3 },
+    { f: 659, d: 0.3 }, { f: 784, d: 0.3 }, { f: 880, d: 0.6 }, { f: 784, d: 0.3 },
+    { f: 659, d: 0.3 }, { f: 587, d: 0.3 }, { f: 523, d: 0.6 }, { f: 0, d: 0.3 },
+    { f: 659, d: 0.3 }, { f: 784, d: 0.3 }, { f: 880, d: 0.3 }, { f: 1047, d: 0.3 },
+    { f: 880, d: 0.3 }, { f: 784, d: 0.3 }, { f: 659, d: 0.3 }, { f: 587, d: 0.3 },
+    { f: 523, d: 0.3 }, { f: 587, d: 0.3 }, { f: 659, d: 0.6 }, { f: 523, d: 0.3 },
+    { f: 587, d: 0.3 }, { f: 659, d: 0.3 }, { f: 523, d: 0.9 }
+];
+/* 低音伴奏：每4个音符换一次低音 */
+var BGM_BASS = [131, 131, 165, 165, 196, 196, 131, 131];
+
+function startBGM() {
+    var ctx = getAudioCtx();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume();
+
+    bgmGainNode = ctx.createGain();
+    bgmGainNode.gain.value = 0.2;
+    bgmGainNode.connect(ctx.destination);
+
+    bgmNoteIdx = 0;
+
+    function playNextBGMNote() {
+        if (!state.bgmOn || !bgmGainNode) return;
+        var ctx2 = getAudioCtx();
+        if (!ctx2) return;
+        var note = BGM_MELODY[bgmNoteIdx % BGM_MELODY.length];
+        var now2 = ctx2.currentTime;
+
+        if (note.f > 0) {
+            /* 旋律：三角波（柔和音色） */
+            var osc = ctx2.createOscillator();
+            var g = ctx2.createGain();
+            osc.connect(g); g.connect(bgmGainNode);
+            osc.frequency.value = note.f;
+            osc.type = 'triangle';
+            g.gain.setValueAtTime(0, now2);
+            g.gain.linearRampToValueAtTime(0.35, now2 + 0.03);
+            g.gain.exponentialRampToValueAtTime(0.001, now2 + note.d * 0.9);
+            osc.start(now2); osc.stop(now2 + note.d);
+        }
+
+        /* 低音伴奏：每8个旋律音符播放一次 */
+        if (bgmNoteIdx % 8 === 0) {
+            var bassFreq = BGM_BASS[Math.floor(bgmNoteIdx / 8) % BGM_BASS.length];
+            var bOsc = ctx2.createOscillator();
+            var bGain = ctx2.createGain();
+            bOsc.connect(bGain); bGain.connect(bgmGainNode);
+            bOsc.frequency.value = bassFreq;
+            bOsc.type = 'sine';
+            bGain.gain.setValueAtTime(0, now2);
+            bGain.gain.linearRampToValueAtTime(0.25, now2 + 0.05);
+            bGain.gain.exponentialRampToValueAtTime(0.001, now2 + 2.4);
+            bOsc.start(now2); bOsc.stop(now2 + 2.4);
+        }
+
+        bgmNoteIdx++;
+        bgmTimer = setTimeout(playNextBGMNote, note.d * 1000);
+    }
+
+    playNextBGMNote();
+}
+
+function stopBGM() {
+    if (bgmTimer) { clearTimeout(bgmTimer); bgmTimer = null; }
+    if (bgmGainNode) {
+        try {
+            var ctx = getAudioCtx();
+            if (ctx) bgmGainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+        } catch(e) {}
+        bgmGainNode = null;
+    }
+}
+
+/* ===== 弹窗管理 ===== */
+function showStartModal() {
+    var content = document.getElementById('modal-content');
+    content.innerHTML =
+        '<h2>🐻 熊了个熊</h2>' +
+        '<p>点击卡牌放入底部卡槽<br>集齐3张相同卡牌自动消除<br>清空所有卡牌即可通关！<br>卡槽满7张则游戏失败<br><br>📦 盲盒堆点击后揭示图案</p>' +
+        '<button class="btn-primary" onclick="startGame(0)">开始第 1 关</button>';
+    document.getElementById('modal-overlay').classList.remove('hidden');
+}
+
+function showResultModal(won) {
+    var content = document.getElementById('modal-content');
+    if (won) {
+        if (state.level === 0) {
+            /* 第1关通过 → 进入第2关 */
+            content.innerHTML =
+                '<h2>🎉 通关！</h2>' +
+                '<p>恭喜通过新手教程！<br>准备好挑战森林难关了吗？<br>第2关每次布局随机生成！</p>' +
+                '<button class="btn-primary" onclick="startGame(1)">挑战第 2 关</button>' +
+                '<button class="btn-secondary" onclick="startGame(0)">重玩第 1 关</button>';
+        } else {
+            /* 第2关通过 → 全部通关 */
+            content.innerHTML =
+                '<h2>🏆 全部通关！</h2>' +
+                '<p>太厉害了！你征服了森林挑战！<br>你就是森林之王！🌲🐻</p>' +
+                '<button class="btn-primary" onclick="startGame(1)">再玩一次第2关</button>' +
+                '<button class="btn-secondary" onclick="startGame(0)">回到第1关</button>';
+        }
+    } else {
+        content.innerHTML =
+            '<h2>😢 游戏失败</h2>' +
+            '<p>卡槽已满，不要灰心！<br>换个策略再试一次吧～</p>' +
+            '<button class="btn-primary" onclick="startGame(' + state.level + ')">重新挑战</button>';
+    }
+    document.getElementById('modal-overlay').classList.remove('hidden');
+}
+
+function hideModal() {
+    document.getElementById('modal-overlay').classList.add('hidden');
+}
+
+/* ===== 开始游戏 ===== */
+function startGame(levelIdx) {
+    state.level = levelIdx;
+    /* 使用新的关卡生成函数（第2关每次随机） */
+    var cards = generateLevel(levelIdx);
+    state.fieldCards = cards;
+    state.slots = [];
+    state.history = [];
+    state.powerups = { undo: 999, shuffle: 999, remove: 999 };
+    state.gameOver = false;
+    state.won = false;
+    state.animating = false;
+    state.totalCards = cards.length;
+    state.cardDims = null; /* 重置缓存，强制重新计算 */
+
+    document.getElementById('level-info').textContent = LEVELS[levelIdx].name;
+    updatePowerupButtons();
+    updateProgress();
+    hideModal();
+
+    /* 进入游戏：背景音乐默认开启则自动播放；
+       首次进入游戏发生在用户点击手势内，可合法 resume AudioContext；
+       若已在播放则不重复启动，避免叠加 */
+    if (state.bgmOn) {
+        if (!bgmGainNode) startBGM();
+    } else {
+        stopBGM();
+    }
+
+    /* 延迟渲染确保容器尺寸已就绪 */
+    setTimeout(function() {
+        updateCardSize();
+        renderField();
+        renderSlots();
+    }, 50);
+}
+
+/* ===== 事件绑定 ===== */
+function initEvents() {
+    /* 道具按钮 */
+    document.getElementById('btn-undo').addEventListener('click', undo);
+    document.getElementById('btn-shuffle').addEventListener('click', shuffleField);
+    document.getElementById('btn-remove').addEventListener('click', removeFromSlot);
+
+    /* 音效开关 */
+    document.getElementById('btn-sound').addEventListener('click', function() {
+        state.soundOn = !state.soundOn;
+        this.querySelector('.btn-icon').textContent = state.soundOn ? '🔊' : '🔇';
+    });
+
+    /* 背景音乐开关 */
+    document.getElementById('btn-bgm').addEventListener('click', function() {
+        state.bgmOn = !state.bgmOn;
+        this.querySelector('.btn-icon').textContent = state.bgmOn ? '🎵' : '🎶';
+        if (state.bgmOn) {
+            startBGM();
+        } else {
+            stopBGM();
+        }
+    });
+
+    /* 卡牌点击事件委托：在game-area上统一监听，避免每次渲染重绑 */
+    document.getElementById('game-area').addEventListener('click', function(e) {
+        if (state.animating || state.gameOver) return;
+        var cardEl = e.target.closest('.card');
+        if (!cardEl) return;
+        if (cardEl.classList.contains('blocked')) return;
+        var cardId = parseInt(cardEl.dataset.id);
+        onCardClick(cardId);
+    });
+
+    /* 窗口尺寸变化：重新计算尺寸并渲染 */
+    var resizeTimer;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function() {
+            if (!state.animating) {
+                state.cardDims = null;
+                updateCardSize();
+                renderField();
+                renderSlots();
+            }
+        }, 200);
+    });
+
+    /* 屏幕旋转：重新渲染 */
+    window.addEventListener('orientationchange', function() {
+        setTimeout(function() {
+            state.cardDims = null;
+            updateCardSize();
+            renderField();
+            renderSlots();
+        }, 300);
+    });
+
+    /* 阻止双击缩放 */
+    var lastTouch = 0;
+    document.addEventListener('touchend', function(e) {
+        var now = Date.now();
+        if (now - lastTouch < 300) e.preventDefault();
+        lastTouch = now;
+    }, { passive: false });
+
+    /* 阻止页面滑动 */
+    document.addEventListener('touchmove', function(e) {
+        e.preventDefault();
+    }, { passive: false });
+}
+
+/* ===== 启动 ===== */
+initEvents();
+showStartModal();
+</script>
+</body>
+</html>
