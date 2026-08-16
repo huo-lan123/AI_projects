@@ -65,14 +65,14 @@ git commit -m "feat: 添加 2048 单文件游戏（粉色主题 + 音效 + 工�
 
 ### 3. 关联远程仓库
 
-将 `<用户名>` 和 `<仓库名>` 替换为你的 GitHub 账号和仓库名（仓库需在 GitHub 网页端先建好，保持为空仓库）：
+本项目的实际仓库地址为 `https://github.com/huo-lan123/AI_projects.git`（仓库需在 GitHub 网页端先建好）：
 
 ```bash
-git remote add origin https://github.com/<用户名>/<仓库名>.git
+git remote add origin https://github.com/huo-lan123/AI_projects.git
 git remote -v        # 确认关联成功
 ```
 
-> 若已存在 remote 或要换地址：`git remote set-url origin https://github.com/<用户名>/<仓库名>.git`
+> 若已存在 remote 或要换地址：`git remote set-url origin https://github.com/huo-lan123/AI_projects.git`
 
 ### 4. 推送到 GitHub
 
