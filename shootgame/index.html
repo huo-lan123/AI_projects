@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>勇者的试炼 - 逃出地牢</title>
+    <link rel="icon" href="data:,">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- 静音按钮 / 全屏横屏按钮 -->
+        <button id="fs-btn" title="全屏并横屏">⛶</button>
+        <button id="mute-btn" title="音效开关 (M)">🔊</button>
+
+        <!-- HUD信息 -->
+        <div id="hud-info"></div>
+
+        <!-- 房间提示 -->
+        <div id="room-toast"></div>
+
+        <!-- 道具提示 -->
+        <div id="item-toast"></div>
+
+        <!-- 开始界面 -->
+        <div id="start-screen" class="overlay">
+            <h1>勇者的试炼</h1>
+            <h2>逃出地牢</h2>
+            <div class="subtitle">
+                逃入随机生成的地下室<br>
+                用眼泪击败怪物<br>
+                收集道具，不断变强<br>
+                击败Boss，逃出生天
+            </div>
+            <button id="start-btn" class="btn">开始游戏</button>
+            <div class="controls-hint">
+                <span class="desktop-only">
+                    <span class="key">W</span><span class="key">A</span><span class="key">S</span><span class="key">D</span> 移动
+                    &nbsp;&nbsp;|&nbsp;&nbsp;
+                    <span class="key">↑</span><span class="key">↓</span><span class="key">←</span><span class="key">→</span> 射击
+                    &nbsp;&nbsp;|&nbsp;&nbsp;
+                    <span class="key">空格</span> 确认
+                    &nbsp;&nbsp;|&nbsp;&nbsp;
+                    <span class="key">M</span> 音效
+                </span>
+                <div class="mobile-hint">竖屏自动旋转画面，横握手机游玩 · 左半屏移动 · 右半屏射击</div>
+            </div>
+            <div class="title-isaac">共 3 层地牢 · 14 种道具 · 4 种敌人</div>
+        </div>
+
+        <!-- 死亡界面 -->
+        <div id="death-screen" class="overlay hidden">
+            <h1 style="color: #c04040;">挑战失败</h1>
+            <h2>探索结束</h2>
+            <div class="stats-panel">
+                <div class="stat-row">
+                    <span class="stat-label">击杀数</span>
+                    <span class="stat-value" id="death-kills">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">拾取道具</span>
+                    <span class="stat-value" id="death-items">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">存活时间</span>
+                    <span class="stat-value" id="death-time">0:00</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">到达层数</span>
+                    <span class="stat-value" id="death-floor">1</span>
+                </div>
+                <div class="items-collected">
+                    <div class="items-collected-title">收集的道具</div>
+                    <div class="items-list" id="death-items-list"></div>
+                </div>
+            </div>
+            <div class="btn-row">
+                <button id="restart-btn" class="btn">重新开始</button>
+                <button id="death-exit-btn" class="btn btn-exit">退出游戏</button>
+            </div>
+        </div>
+
+        <!-- 通关界面 -->
+        <div id="victory-screen" class="overlay hidden">
+            <h1 style="color: #e8c850;">通关!</h1>
+            <h2>你逃出了地下室</h2>
+            <div class="stats-panel">
+                <div class="stat-row">
+                    <span class="stat-label">击杀数</span>
+                    <span class="stat-value" id="victory-kills">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">拾取道具</span>
+                    <span class="stat-value" id="victory-items">0</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">存活时间</span>
+                    <span class="stat-value" id="victory-time">0:00</span>
+                </div>
+                <div class="items-collected">
+                    <div class="items-collected-title">收集的道具</div>
+                    <div class="items-list" id="victory-items-list"></div>
+                </div>
+            </div>
+            <div class="btn-row">
+                <button id="victory-restart-btn" class="btn">再来一次</button>
+                <button id="victory-exit-btn" class="btn btn-exit">退出游戏</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 脚本（按依赖顺序加载） -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/audio.js"></script>
+    <script src="js/input.js"></script>
+    <script src="js/bullet.js"></script>
+    <script src="js/player.js"></script>
+    <script src="js/enemy.js"></script>
+    <script src="js/item.js"></script>
+    <script src="js/room.js"></script>
+    <script src="js/dungeon.js"></script>
+    <script src="js/renderer.js"></script>
+    <script src="js/game.js"></script>
+</body>
+</html>
