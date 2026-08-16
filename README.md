@@ -1,6 +1,6 @@
 # 2048 小游戏（粉色主题 · 单文件版）
 
-一个零依赖、纯前端的 2048 游戏，整个游戏就是**一个 `2048.html` 文件**，双击即可在浏览器里玩，无需安装任何环境。
+一个零依赖、纯前端的 2048 游戏，整个游戏就是**一个 `index.html` 文件**，双击即可在浏览器里玩，无需安装任何环境。
 
 ## 功能特性
 
@@ -16,12 +16,12 @@
 
 ## 本地运行
 
-直接用浏览器打开 `2048.html` 即可：
+直接用浏览器打开 `index.html` 即可：
 
 ```bash
-# 方式一：文件管理器里双击 2048.html
+# 方式一：文件管理器里双击 index.html
 # 方式二：命令行打开（Windows）
-start 2048.html
+start index.html
 ```
 
 无需构建、无需服务器。
@@ -30,7 +30,7 @@ start 2048.html
 
 ```
 2048游戏/
-├── 2048.html      # 游戏本体（HTML + 内联 CSS + JS，零依赖）
+├── index.html      # 游戏本体（HTML + 内联 CSS + JS，零依赖）
 ├── README.md      # 本说明文档
 └── .workbuddy/    # 本地工作记忆目录（已通过 .gitignore 排除，不参与上传）
 ```
@@ -59,7 +59,7 @@ git init
 printf '.workbuddy/\n' > .gitignore
 
 # 提交游戏文件
-git add 2048.html .gitignore
+git add index.html .gitignore
 git commit -m "feat: 添加 2048 单文件游戏（粉色主题 + 音效 + 工具）"
 ```
 
@@ -95,7 +95,7 @@ git config --global credential.helper wincred
 ### 后续更新代码
 
 ```bash
-git add 2048.html
+git add index.html
 git commit -m "更新说明"
 git push
 ```
