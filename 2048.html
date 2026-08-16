@@ -1,0 +1,942 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>2048</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+    background: linear-gradient(160deg, #fce4ec 0%, #f3e5f5 100%);
+    color: #880e4f;
+    min-height: 100vh;
+    min-height: 100dvh; /* 动态视口高度，避免手机地址栏遮挡 */
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 20px 10px;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none; /* 长按不弹出菜单 */
+    user-select: none;           /* 防止滑动时误选文字 */
+    overscroll-behavior: none;   /* 禁止下拉刷新/橡皮筋滚动 */
+  }
+
+  .container { width: min(440px, 92vw); }
+
+  .top-area {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+  .top-left, .top-right {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .top-right { align-items: flex-end; }
+  .title { font-size: clamp(40px, 12vw, 52px); font-weight: 800; color: #e91e63; letter-spacing: 1px; line-height: 1; }
+
+  .scores { display: flex; gap: 10px; }
+  .score-box {
+    background: #ffffff;
+    border: 2px solid #f48fb1;
+    border-radius: 8px;
+    padding: 6px 16px;
+    text-align: center;
+    color: #e91e63;
+    min-width: 70px;
+    transition: transform 100ms ease;
+  }
+  .score-box.score-pop { animation: scorePop 160ms ease; }
+  @keyframes scorePop {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.12); }
+    100% { transform: scale(1); }
+  }
+  .score-label {
+    display: block;
+    font-size: 12px;
+    text-transform: uppercase;
+    color: #888888;
+    letter-spacing: 1px;
+    font-weight: 700;
+  }
+  .score-box span:last-child { font-size: 22px; font-weight: 700; color: #e91e63; }
+
+  .sub-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn-small { padding: 8px 14px; font-size: 14px; }
+  .intro { font-size: 15px; line-height: 1.4; color: #880e4f; }
+  .intro strong { color: #e91e63; }
+
+  .btn {
+    background: #f8bbd0;          /* 功能按钮：浅粉 */
+    color: #880e4f;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: background 120ms ease, transform 120ms ease;
+  }
+  .btn:hover { background: #f48fb1; }
+  .btn:active { transform: translateY(1px); }
+
+  /* 主操作按钮：深玫红，视觉重心 */
+  .btn-primary { background: #e91e63; color: #fff; }
+  .btn-primary:hover { background: #d81b60; }
+
+  /* 开关按钮：关闭淡紫灰 / 开启玫红（粉系内区分） */
+  .btn-toggle { background: #f3e5f5; color: #999999; }
+  .btn-toggle.on { background: #ec407a; color: #fff; }
+  .btn-toggle:hover { background: #ece0ee; }
+  .btn-toggle.on:hover { background: #d81b60; }
+
+  /* ===== 棋盘 ===== */
+  .board {
+    /* 用 CSS 变量统一控制格子尺寸与间距，保证响应式且瓦片与背景网格对齐 */
+    --gap: clamp(3px, 0.9vw, 6px);
+    --cell: calc((min(440px, 92vw) - 5 * var(--gap)) / 4);
+    position: relative;
+    width: min(440px, 92vw);
+    aspect-ratio: 1 / 1;
+    background: #f8bbd0;
+    border-radius: 8px;
+    box-shadow: 0 10px 28px rgba(233, 30, 99, 0.18);
+    touch-action: none; /* 防止滑动时页面滚动 */
+    user-select: none;
+  }
+
+  /* 背景格子（静态） */
+  .grid-bg {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-columns: repeat(4, var(--cell));
+    grid-template-rows: repeat(4, var(--cell));
+    gap: var(--gap);
+    padding: var(--gap);
+  }
+  .cell { background: #f3e5f5; border-radius: 5px; }
+
+  /* 瓦片容器：内边距与背景网格一致，使坐标原点对齐 */
+  .tile-container { position: absolute; inset: var(--gap); }
+
+  /* 外层负责定位（位移动画），内层负责颜色与缩放动画，互不干扰 */
+  .tile {
+    position: absolute;
+    width: var(--cell);
+    height: var(--cell);
+    transform: translate(
+      calc(var(--col) * (var(--cell) + var(--gap))),
+      calc(var(--row) * (var(--cell) + var(--gap)))
+    );
+    transition: transform 130ms ease-in-out;
+    z-index: 2;
+  }
+  .tile-inner {
+    width: 100%;
+    height: 100%;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    font-size: calc(var(--cell) * 0.5);
+    background: #eee4da;
+    color: #776e65;
+  }
+
+  /* 新生成 / 合并产生的弹出动画 */
+  .tile-new .tile-inner { animation: appear 160ms ease 60ms backwards; }
+  .tile-merged .tile-inner { animation: pop 180ms ease 60ms; z-index: 3; }
+  @keyframes appear {
+    from { opacity: 0; transform: scale(0); }
+    to { opacity: 1; transform: scale(1); }
+  }
+  @keyframes pop {
+    0% { transform: scale(0.6); }
+    50% { transform: scale(1.18); }
+    100% { transform: scale(1); }
+  }
+
+  /* 粉红阶梯配色（按数值） */
+  .tile-2    .tile-inner { background: #fce4ec; color: #880e4f; }
+  .tile-4    .tile-inner { background: #f9a8d4; color: #880e4f; }
+  .tile-8    .tile-inner { background: #f48fb1; color: #ffffff; }
+  .tile-16   .tile-inner { background: #f06292; color: #ffffff; }
+  .tile-32   .tile-inner { background: #ec407a; color: #ffffff; }
+  .tile-64   .tile-inner { background: #e91e63; color: #ffffff; }
+  .tile-128  .tile-inner { background: #d81b60; color: #ffffff; font-size: calc(var(--cell) * 0.42); }
+  .tile-256  .tile-inner { background: #c2185b; color: #ffffff; font-size: calc(var(--cell) * 0.42); }
+  .tile-512  .tile-inner { background: #ad1457; color: #ffffff; font-size: calc(var(--cell) * 0.42); }
+  .tile-1024 .tile-inner { background: #880e4f; color: #ffeb3b; font-size: calc(var(--cell) * 0.32); }
+  .tile-2048 .tile-inner { background: #ffd600; color: #e65100; font-size: calc(var(--cell) * 0.32); }
+  .tile-super .tile-inner { background: #3c3a32; color: #ffffff; font-size: calc(var(--cell) * 0.32); }
+
+  /* ===== 结算遮罩 ===== */
+  .game-message {
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 240, 247, 0.94);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 220ms ease;
+    z-index: 10;
+  }
+  .game-message.active { opacity: 1; visibility: visible; }
+  .message-text { font-size: 34px; font-weight: 800; color: #880e4f; margin-bottom: 18px; }
+  .game-won .message-text { color: #e91e63; }
+  .message-actions { display: flex; gap: 10px; }
+
+  .tip { text-align: center; margin-top: 14px; font-size: 13px; color: #880e4f; transition: color 120ms ease; }
+
+  /* 工具条 */
+  .toolbar { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn.active {
+    background: #e91e63;
+    color: #fff;
+    box-shadow: 0 0 0 2px #fff inset, 0 0 0 4px #f8bbd0;
+  }
+  #undo:disabled { opacity: 0.45; cursor: not-allowed; }
+
+  /* 变形：数值选择弹层 */
+  .action-modal {
+    position: absolute;
+    inset: 0;
+    z-index: 20;
+    background: rgba(255, 240, 247, 0.98);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 16px;
+    text-align: center;
+  }
+  .action-modal[hidden] { display: none; }
+  .action-title { font-size: 18px; font-weight: 800; color: #880e4f; }
+  .preset-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    width: 100%;
+    max-width: 280px;
+  }
+  .preset-grid button {
+    background: #ffd9ec;
+    color: #8a6d7b;
+    border: none;
+    border-radius: 6px;
+    padding: 9px 0;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: background 120ms ease;
+  }
+  .preset-grid button:hover { background: #ffc9e2; }
+  .action-custom { display: flex; gap: 8px; }
+  .action-custom input {
+    width: 110px;
+    padding: 8px;
+    border: 2px solid #ffc2de;
+    border-radius: 6px;
+    font-size: 14px;
+    text-align: center;
+    outline: none;
+    color: #8a6d7b;
+  }
+  .action-custom input:focus { border-color: #ff9ec7; }
+</style>
+</head>
+<body>
+  <div class="container">
+    <div class="top-area">
+      <div class="top-left">
+        <h1 class="title">2048</h1>
+        <p class="intro">合并相同数字，凑出 <strong>2048</strong>！</p>
+        <div class="toolbar">
+          <button id="undo" class="btn btn-small">撤回</button>
+          <button id="tool-remove" class="btn btn-small">消除</button>
+          <button id="tool-change" class="btn btn-small">变形</button>
+        </div>
+      </div>
+      <div class="top-right">
+        <div class="scores">
+          <div class="score-box"><span class="score-label">分数</span><span id="score">0</span></div>
+          <div class="score-box"><span class="score-label">最高</span><span id="best">0</span></div>
+        </div>
+        <div class="sub-actions">
+          <button id="sound-toggle" class="btn btn-small btn-toggle on">音效：开</button>
+          <button id="restart" class="btn btn-primary">重新开始</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="board" id="board">
+      <div class="grid-bg" id="grid-bg"></div>
+      <div class="tile-container" id="tile-container"></div>
+      <div class="game-message" id="game-message">
+        <p class="message-text" id="message-text"></p>
+        <div class="message-actions">
+          <button class="btn btn-primary" id="keep-playing" style="display:none">继续游戏</button>
+          <button class="btn btn-primary" id="retry">再来一局</button>
+        </div>
+      </div>
+
+      <div class="action-modal" id="change-panel" hidden>
+        <p class="action-title">将数字改为</p>
+        <div class="preset-grid" id="preset-grid"></div>
+        <div class="action-custom">
+          <input type="number" id="change-input" min="2" step="1" placeholder="自定义">
+          <button class="btn btn-small btn-primary" id="change-ok">确定</button>
+        </div>
+        <button class="btn btn-small" id="change-cancel">取消</button>
+      </div>
+    </div>
+
+    <p class="tip" id="tip">操作：方向键（↑↓←→ / WASD）或 滑动屏幕</p>
+  </div>
+
+<script>
+"use strict";
+
+/* ===================== 常量 ===================== */
+const SIZE = 4;          // 4x4 网格
+const WIN_VALUE = 2048;  // 胜利数值
+const START_TILES = 2;   // 初始块数量
+const SWIPE_MIN = 30;    // 触摸最小滑动距离(px)
+
+/* 全局自增 id，用于区分瓦片（动画与状态追踪） */
+let tileIdCounter = 0;
+
+/* ===================== 逻辑层：瓦片 ===================== */
+class Tile {
+  constructor(position, value) {
+    this.id = ++tileIdCounter;
+    this.row = position.row;
+    this.col = position.col;
+    this.value = value || 2;
+    this.previousPosition = null; // 移动前的位置（供滑动动画使用）
+    this.mergedFrom = null;       // 记录由哪两个块合并而来
+  }
+  // 移动前保存当前坐标
+  savePosition() {
+    this.previousPosition = { row: this.row, col: this.col };
+  }
+  updatePosition(position) {
+    this.row = position.row;
+    this.col = position.col;
+  }
+}
+
+/* ===================== 逻辑层：网格 ===================== */
+class Grid {
+  constructor(size) {
+    this.size = size;
+    this.cells = [];
+    for (let r = 0; r < size; r++) {
+      this.cells.push(new Array(size).fill(null));
+    }
+  }
+  eachCell(cb) {
+    for (let r = 0; r < this.size; r++)
+      for (let c = 0; c < this.size; c++)
+        cb(r, c, this.cells[r][c]);
+  }
+  availableCells() {
+    const cells = [];
+    this.eachCell((r, c, tile) => { if (!tile) cells.push({ row: r, col: c }); });
+    return cells;
+  }
+  randomAvailableCell() {
+    const cells = this.availableCells();
+    return cells.length ? cells[Math.floor(Math.random() * cells.length)] : null;
+  }
+  cellsAvailable() { return this.availableCells().length > 0; }
+  withinBounds(p) {
+    return p.row >= 0 && p.row < this.size && p.col >= 0 && p.col < this.size;
+  }
+  cellContent(cell) {
+    return this.withinBounds(cell) ? this.cells[cell.row][cell.col] : null;
+  }
+  cellAvailable(cell) { return !this.cellContent(cell); }
+  insertTile(tile) { this.cells[tile.row][tile.col] = tile; }
+  removeTile(tile) { this.cells[tile.row][tile.col] = null; }
+}
+
+/* ===================== 音效层：Web Audio 合成（无需外部文件） ===================== */
+class Sound {
+  constructor() {
+    this.ctx = null;
+    this.enabled = true; // 是否开启音效
+  }
+  // 确保音频上下文已创建并处于运行状态（需在用户手势中调用）
+  ensure() {
+    if (!this.enabled) return;
+    if (!this.ctx) {
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) { this.enabled = false; return; }
+      this.ctx = new AC();
+    }
+    if (this.ctx.state === "suspended") this.ctx.resume();
+  }
+  // 通用发声：频率、时长(s)、波形、音量、延迟(s)
+  play(freq, duration, type = "sine", volume = 0.2, delay = 0) {
+    if (!this.enabled) return;
+    this.ensure();
+    if (!this.ctx) return;
+    const t0 = this.ctx.currentTime + delay;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t0);
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(volume, t0 + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+    osc.connect(gain).connect(this.ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + duration + 0.03);
+  }
+  // 移动：清脆短促的滑动"嗒"声（高频 + 八度泛音 + 极短包络）
+  move() {
+    this.play(880, 0.05, "triangle", 0.11);
+    this.play(1760, 0.035, "sine", 0.05);
+  }
+  // 合并：经典"金币"声（两声短促高音，方波还原 8-bit 质感）
+  merge() {
+    this.play(988, 0.07, "square", 0.13);        // B5
+    this.play(1319, 0.18, "square", 0.13, 0.07); // E6
+  }
+  // 胜利：上行琶音 C5-E5-G5-C6
+  win() {
+    const notes = [523.25, 659.25, 783.99, 1046.5];
+    notes.forEach((f, i) => this.play(f, 0.32, "triangle", 0.22, i * 0.13));
+  }
+  // 游戏结束：下行音
+  over() {
+    const notes = [392.0, 311.13, 261.63];
+    notes.forEach((f, i) => this.play(f, 0.34, "sawtooth", 0.14, i * 0.15));
+  }
+}
+
+/* ===================== 逻辑层 + 渲染层：游戏管理器 ===================== */
+class GameManager {
+  constructor() {
+    this.grid = new Grid(SIZE);
+    this.score = 0;
+    this.best = Number(localStorage.getItem("2048-best") || 0);
+    this.won = false;        // 是否已经出现过 2048
+    this.over = false;       // 是否游戏结束
+    this.keepPlaying = false;// 胜利后是否选择继续
+    this._renderedScore = null;
+    this.sound = new Sound(); // 音效引擎
+    this.history = [];        // 历史快照栈（用于撤回）
+    this.activeTool = null;   // 当前工具：null / "remove" / "change"
+    this.pendingChange = null;// 变形时待修改的格子 {row,col}
+
+    // 缓存 DOM 节点
+    this.tileContainer = document.getElementById("tile-container");
+    this.scoreEl = document.getElementById("score");
+    this.bestEl = document.getElementById("best");
+    this.messageEl = document.getElementById("game-message");
+    this.messageTextEl = document.getElementById("message-text");
+    this.keepPlayingBtn = document.getElementById("keep-playing");
+    this.tipEl = document.getElementById("tip");
+    this.undoBtn = document.getElementById("undo");
+    this.removeBtn = document.getElementById("tool-remove");
+    this.changeBtn = document.getElementById("tool-change");
+    this.changePanel = document.getElementById("change-panel");
+    this.changeInput = document.getElementById("change-input");
+    this.presetGrid = document.getElementById("preset-grid");
+
+    this.buildBackground();
+    this.buildPresets();
+    this.bindEvents();
+    this.setup();
+  }
+
+  // 构建 16 个静态背景格子
+  buildBackground() {
+    const bg = document.getElementById("grid-bg");
+    bg.innerHTML = "";
+    for (let i = 0; i < SIZE * SIZE; i++) {
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      bg.appendChild(cell);
+    }
+  }
+
+  // 初始化/重开一局
+  setup() {
+    this.grid = new Grid(SIZE);
+    this.score = 0;
+    this.won = false;
+    this.over = false;
+    this.keepPlaying = false;
+    this.history = [];
+    this.clearTool();
+    for (let i = 0; i < START_TILES; i++) this.addRandomTile();
+    this.actuate();
+  }
+
+  /* 生成变形面板的预设数值按钮（2 ~ 2048） */
+  buildPresets() {
+    this.presetGrid.innerHTML = "";
+    for (let v = 2; v <= WIN_VALUE; v *= 2) {
+      const b = document.createElement("button");
+      b.textContent = v;
+      b.addEventListener("click", () => this.applyChange(v));
+      this.presetGrid.appendChild(b);
+    }
+  }
+
+  /* 在随机空位生成新块：90% 概率为 2，10% 概率为 4 */
+  addRandomTile() {
+    if (!this.grid.cellsAvailable()) return;
+    const value = Math.random() < 0.9 ? 2 : 4;
+    const cell = this.grid.randomAvailableCell();
+    this.grid.insertTile(new Tile(cell, value));
+  }
+
+  /* 每次移动前：保存所有瓦片旧位置，并清空上一轮的合并标记 */
+  prepareTiles() {
+    this.grid.eachCell((r, c, tile) => {
+      if (tile) { tile.mergedFrom = null; tile.savePosition(); }
+    });
+  }
+
+  /* 把瓦片从旧坐标移动到新坐标 */
+  moveTile(tile, cell) {
+    this.grid.cells[tile.row][tile.col] = null;
+    tile.updatePosition(cell);
+    this.grid.cells[cell.row][cell.col] = tile;
+  }
+
+  /* 方向 -> 向量 */
+  getVector(direction) {
+    // 0:上 1:右 2:下 3:左
+    const map = {
+      0: { x: 0, y: -1 },
+      1: { x: 1, y: 0 },
+      2: { x: 0, y: 1 },
+      3: { x: -1, y: 0 }
+    };
+    return map[direction];
+  }
+
+  /* 根据移动方向决定遍历顺序：从远离目标的一端开始，保证移动/合并正确 */
+  buildTraversals(vector) {
+    const t = { row: [], col: [] };
+    for (let i = 0; i < SIZE; i++) { t.row.push(i); t.col.push(i); }
+    if (vector.x === 1) t.col.reverse(); // 向右：从右往左
+    if (vector.y === 1) t.row.reverse(); // 向下：从下往上
+    return t;
+  }
+
+  /* 找到沿向量方向可到达的最远空位，以及它后面的第一个格子 */
+  findFarthestPosition(cell, vector) {
+    let previous;
+    let next = cell;
+    do {
+      previous = next;
+      next = { row: previous.row + vector.y, col: previous.col + vector.x };
+    } while (this.grid.withinBounds(next) && this.grid.cellAvailable(next));
+    return { farthest: previous, next };
+  }
+
+  /* 游戏是否已终止（结束后或胜利且未选择继续） */
+  isGameTerminated() {
+    return this.over || (this.won && !this.keepPlaying);
+  }
+
+  /* 核心：按方向移动 */
+  move(direction) {
+    if (this.isGameTerminated()) return;
+
+    const vector = this.getVector(direction);
+    const traversals = this.buildTraversals(vector);
+    let moved = false;
+    let justWon = false;     // 本回合是否刚达成 2048
+    this._merges = [];      // 记录本次移动发生的合并数值
+    const snap = this.snapshot(); // 移动前快照（用于撤回）
+
+    this.prepareTiles();
+
+    traversals.row.forEach(row => {
+      traversals.col.forEach(col => {
+        const cell = { row, col };
+        const tile = this.grid.cellContent(cell);
+        if (!tile) return;
+
+        const positions = this.findFarthestPosition(cell, vector);
+        const next = positions.next;
+        const nextTile = this.grid.cellContent(next);
+
+        // 合并：下一个位置有相同数字，且该数字本回合尚未合并过
+        if (nextTile && nextTile.value === tile.value && !nextTile.mergedFrom) {
+          const merged = new Tile(next, tile.value * 2);
+          merged.mergedFrom = [tile, nextTile];
+
+          this.grid.insertTile(merged); // 合并块放入目标位
+          this.grid.removeTile(tile);   // 移除被合并的移动块
+          tile.updatePosition(next);    // 让源块滑向目标位（产生动画）
+
+          this.score += merged.value;
+          this._merges.push(merged.value);
+          if (merged.value === WIN_VALUE && !this.won) { this.won = true; justWon = true; }
+          moved = true;
+        } else {
+          // 普通移动：滑到最远空位
+          this.moveTile(tile, positions.farthest);
+          if (positions.farthest.row !== cell.row || positions.farthest.col !== cell.col) {
+            moved = true;
+          }
+        }
+      });
+    });
+
+    // 只有网格真正发生变化时才生成新块
+    if (moved) {
+      this.history.push(snap); // 记录可撤回的状态
+      this.addRandomTile();
+      if (!this.movesAvailable()) this.over = true;
+      this.actuate();
+
+      // 音效：移动声 + 每个合并声（音高随数值升高）
+      this.sound.move();
+      this._merges.forEach(v => this.sound.merge(v));
+      if (this.over) this.sound.over();
+      else if (justWon) this.sound.win(); // 胜利音效 + 成功页面（遮罩已在 actuate 中显示）
+    }
+  }
+
+  /* ===================== 工具操作：撤回 / 消除 / 变形 ===================== */
+
+  // 对当前棋盘状态做快照（用于撤回）
+  snapshot() {
+    const values = new Array(SIZE * SIZE).fill(0);
+    for (let r = 0; r < SIZE; r++)
+      for (let c = 0; c < SIZE; c++) {
+        const t = this.grid.cells[r][c];
+        values[r * SIZE + c] = t ? t.value : 0;
+      }
+    return {
+      values,
+      score: this.score,
+      won: this.won,
+      over: this.over,
+      keepPlaying: this.keepPlaying
+    };
+  }
+
+  // 用快照恢复棋盘
+  restore(snap) {
+    this.grid = new Grid(SIZE);
+    for (let r = 0; r < SIZE; r++)
+      for (let c = 0; c < SIZE; c++) {
+        const v = snap.values[r * SIZE + c];
+        if (v) this.grid.insertTile(new Tile({ row: r, col: c }, v));
+      }
+    this.score = snap.score;
+    this.won = snap.won;
+    this.over = snap.over;
+    this.keepPlaying = snap.keepPlaying;
+    this.actuate(true); // 静默：撤回还原不播放滑动/弹出动画
+  }
+
+  // 撤回上一步
+  undo() {
+    if (!this.history.length) return;
+    this.restore(this.history.pop());
+    this.clearTool();
+  }
+
+  // 消除指定格子
+  removeTileAt(r, c) {
+    const t = this.grid.cellContent({ row: r, col: c });
+    if (!t) return;
+    this.history.push(this.snapshot());
+    this.grid.removeTile(t);
+    this.actuate(true); // 静默：消除后其他瓦片直接就位，不再回跳闪动
+  }
+
+  // 将指定格子变为目标数值
+  changeTileAt(r, c, value) {
+    const t = this.grid.cellContent({ row: r, col: c });
+    if (!t || !value || value < 2) return;
+    this.history.push(this.snapshot());
+    t.value = value;
+    if (value === WIN_VALUE && !this.won) this.won = true;
+    this.actuate(true); // 静默：变形后直接就位
+  }
+
+  // 打开/关闭变形数值面板
+  showChangePanel() {
+    this.changePanel.hidden = false;
+    this.changeInput.value = "";
+  }
+  hideChangePanel() { this.changePanel.hidden = true; }
+
+  // 应用变形（来自预设或自定义输入）
+  applyChange(v) {
+    if (this.pendingChange) {
+      this.changeTileAt(this.pendingChange.row, this.pendingChange.col, v);
+    }
+    this.pendingChange = null;
+    this.hideChangePanel();
+  }
+
+  // 切换工具模式
+  setTool(tool) {
+    this.activeTool = (this.activeTool === tool) ? null : tool;
+    if (!this.activeTool) this.hideChangePanel();
+    this.refreshToolButtons();
+  }
+  clearTool() {
+    this.activeTool = null;
+    this.pendingChange = null;
+    this.hideChangePanel();
+    this.refreshToolButtons();
+  }
+  // 刷新工具条状态（撤回可用性、激活高亮、提示文案）
+  refreshToolButtons() {
+    this.undoBtn.disabled = this.history.length === 0;
+    this.removeBtn.classList.toggle("active", this.activeTool === "remove");
+    this.changeBtn.classList.toggle("active", this.activeTool === "change");
+    if (this.activeTool === "remove") {
+      this.tipEl.textContent = "消除模式：点击任意方块将其移除";
+      this.tipEl.style.color = "#e91e63";
+    } else if (this.activeTool === "change") {
+      this.tipEl.textContent = "变形模式：点击方块并选择新数值";
+      this.tipEl.style.color = "#c2185b";
+    } else {
+      this.tipEl.textContent = "操作：方向键（↑↓←→ / WASD）或 滑动屏幕";
+      this.tipEl.style.color = "#880e4f";
+    }
+  }
+
+  /* 是否还能继续：有空位 或 存在可合并的相邻块 */
+  movesAvailable() {
+    return this.grid.cellsAvailable() || this.tileMatchesAvailable();
+  }
+
+  /* 判断是否存在相邻同值块 */
+  tileMatchesAvailable() {
+    for (let r = 0; r < SIZE; r++) {
+      for (let c = 0; c < SIZE; c++) {
+        const tile = this.grid.cellContent({ row: r, col: c });
+        if (!tile) continue;
+        // 只需检查右、下两个方向即可覆盖全部相邻
+        for (const dir of [{ x: 1, y: 0 }, { x: 0, y: 1 }]) {
+          const other = this.grid.cellContent({ row: r + dir.y, col: c + dir.x });
+          if (other && other.value === tile.value) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /* ===================== 渲染层 ===================== */
+  actuate(silent = false) {
+    // 每次重建瓦片 DOM；动画依靠 previousPosition 完成
+    // silent=true 用于消除/变形/撤回等局部操作，避免重绘时触发不必要动画
+    this.tileContainer.innerHTML = "";
+    this.grid.eachCell((r, c, tile) => {
+      if (tile) this.addTile(tile, silent);
+    });
+
+    // 分数与最高分
+    this.scoreEl.textContent = this.score;
+    if (this.score !== this._renderedScore) {
+      const box = this.scoreEl.parentElement;
+      box.classList.remove("score-pop");
+      void box.offsetWidth; // 强制重排以重启动画
+      box.classList.add("score-pop");
+      this._renderedScore = this.score;
+    }
+    if (this.score > this.best) {
+      this.best = this.score;
+      localStorage.setItem("2048-best", this.best);
+    }
+    this.bestEl.textContent = this.best;
+
+    this.updateMessage();
+    this.refreshToolButtons();
+  }
+
+  /* 根据一个瓦片状态生成 DOM（含滑动/弹出动画）
+     silent=true 时（消除/变形/撤回等局部操作）：直接定位于当前位置，
+     不播放任何过渡动画，避免上一次移动残留的 previousPosition 触发"回跳闪动"。 */
+  addTile(tile, silent = false) {
+    const wrapper = document.createElement("div");
+    wrapper.className = "tile";
+    wrapper.dataset.row = tile.row;
+    wrapper.dataset.col = tile.col;
+
+    // 无论是否动画，先创建数字元素（否则静默渲染会变成空白块）
+    const inner = document.createElement("div");
+    const valueClass = tile.value > 2048 ? "tile-super" : "tile-" + tile.value;
+    // 数值 class 挂在外层 wrapper 上，内层只保留 tile-inner，
+    // 这样 CSS 后代选择器 .tile-2 .tile-inner 才能命中并上色
+    wrapper.className = "tile " + valueClass;
+    inner.className = "tile-inner";
+    inner.textContent = tile.value;
+    wrapper.appendChild(inner);
+
+    // 静默渲染：数字已就位，仅直接定位、跳过滑动/弹出动画
+    if (silent) {
+      wrapper.style.setProperty("--row", tile.row);
+      wrapper.style.setProperty("--col", tile.col);
+      this.tileContainer.appendChild(wrapper);
+      return;
+    }
+
+    // 若有旧位置，先放到旧位置，下一帧再移动到新位置 -> 滑动效果
+    const pos = tile.previousPosition || { row: tile.row, col: tile.col };
+    wrapper.style.setProperty("--row", pos.row);
+    wrapper.style.setProperty("--col", pos.col);
+
+    if (tile.previousPosition) {
+      requestAnimationFrame(() => {
+        wrapper.style.setProperty("--row", tile.row);
+        wrapper.style.setProperty("--col", tile.col);
+      });
+    } else if (tile.mergedFrom) {
+      // 合并块：先渲染两个源块（它们会滑入），合并块本身再做 pop 动画
+      wrapper.classList.add("tile-merged");
+      tile.mergedFrom.forEach(m => this.addTile(m, silent));
+    } else {
+      // 新生成的块
+      wrapper.classList.add("tile-new");
+    }
+
+    this.tileContainer.appendChild(wrapper);
+  }
+
+  /* 更新结算遮罩 */
+  updateMessage() {
+    this.messageEl.classList.remove("active", "game-won", "game-over");
+    this.keepPlayingBtn.style.display = "none";
+
+    if (this.over) {
+      this.messageEl.classList.add("active", "game-over");
+      this.messageTextEl.textContent = "游戏结束";
+    } else if (this.won && !this.keepPlaying) {
+      this.messageEl.classList.add("active", "game-won");
+      this.messageTextEl.textContent = "你赢了！";
+      this.keepPlayingBtn.style.display = "inline-block";
+    }
+  }
+
+  /* ===================== 事件绑定 ===================== */
+  bindEvents() {
+    const keyMap = {
+      "ArrowUp": 0, "ArrowRight": 1, "ArrowDown": 2, "ArrowLeft": 3,
+      "w": 0, "d": 1, "s": 2, "a": 3,
+      "W": 0, "D": 1, "S": 2, "A": 3
+    };
+    document.addEventListener("keydown", (e) => {
+      if (e.key in keyMap) {
+        e.preventDefault(); // 阻止方向键导致页面滚动
+        this.move(keyMap[e.key]);
+      }
+    });
+
+    // 触摸滑动
+    const board = document.getElementById("board");
+    let startX = 0, startY = 0;
+    board.addEventListener("touchstart", (e) => {
+      if (e.touches.length !== 1) return;
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+    }, { passive: true });
+
+    // 阻止滑动过程中的页面滚动/缩放手势（非 passive，允许 preventDefault）
+    board.addEventListener("touchmove", (e) => e.preventDefault(), { passive: false });
+
+    board.addEventListener("touchend", (e) => {
+      if (!e.changedTouches.length) return;
+      const dx = e.changedTouches[0].clientX - startX;
+      const dy = e.changedTouches[0].clientY - startY;
+      const absX = Math.abs(dx), absY = Math.abs(dy);
+      if (Math.max(absX, absY) < SWIPE_MIN) return; // 最小滑动距离
+      // 以位移更大的轴判定主方向
+      if (absX > absY) {
+        this.move(dx > 0 ? 1 : 3); // 右 / 左
+      } else {
+        this.move(dy > 0 ? 2 : 0); // 下 / 上
+      }
+    }, { passive: true });
+
+    document.getElementById("restart").addEventListener("click", () => this.setup());
+    document.getElementById("retry").addEventListener("click", () => this.setup());
+
+    // 音效开关
+    const soundBtn = document.getElementById("sound-toggle");
+    soundBtn.addEventListener("click", () => {
+      this.sound.enabled = !this.sound.enabled;
+      soundBtn.textContent = "音效：" + (this.sound.enabled ? "开" : "关");
+      soundBtn.classList.toggle("on", this.sound.enabled);
+      if (this.sound.enabled) this.sound.move(); // 取消静音时给个反馈
+    });
+
+    this.keepPlayingBtn.addEventListener("click", () => {
+      this.keepPlaying = true; // 继续游戏：此后不再弹出胜利提示
+      this.updateMessage();
+    });
+
+    // 工具：撤回
+    this.undoBtn.addEventListener("click", () => this.undo());
+
+    // 工具：消除 / 变形（切换模式）
+    this.removeBtn.addEventListener("click", () => this.setTool("remove"));
+    this.changeBtn.addEventListener("click", () => this.setTool("change"));
+
+    // 工具：点击棋盘上的方块执行当前模式操作（事件委托）
+    this.tileContainer.addEventListener("click", (e) => {
+      if (!this.activeTool) return;
+      const el = e.target.closest(".tile");
+      if (!el) return;
+      const r = Number(el.dataset.row);
+      const c = Number(el.dataset.col);
+      if (this.activeTool === "remove") {
+        this.removeTileAt(r, c);
+      } else if (this.activeTool === "change") {
+        this.pendingChange = { row: r, col: c };
+        this.showChangePanel();
+      }
+    });
+
+    // 变形面板：确定 / 取消
+    document.getElementById("change-ok").addEventListener("click", () => {
+      const v = parseInt(this.changeInput.value, 10);
+      if (!isNaN(v) && v >= 2) this.applyChange(v);
+    });
+    document.getElementById("change-cancel").addEventListener("click", () => {
+      this.pendingChange = null;
+      this.hideChangePanel();
+    });
+  }
+}
+
+/* 启动 */
+window.addEventListener("DOMContentLoaded", () => new GameManager());
+</script>
+</body>
+</html>
